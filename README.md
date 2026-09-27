@@ -77,7 +77,7 @@ Remote MCP endpoint:
 POST https://your-domain.example/mcp
 ```
 
-See [Coolify deployment](docs/COOLIFY.md) and [ChatGPT connection](docs/CHATGPT.md).
+See [Coolify deployment](docs/COOLIFY.md), [ChatGPT connection](docs/CHATGPT.md), and the [Naxas live read-only rollout](docs/NAXAS_LIVE_ROLLOUT.md).
 
 ## Development checks
 
