@@ -42,8 +42,26 @@ export function registerTools(server: McpServer) {
     return resultText({ schema, columns: res.rows });
   });
 
+  server.registerTool("db_write_preview", {
+    description: "Preview one data-change statement with PostgreSQL EXPLAIN only; no write is executed.",
+    inputSchema: {
+      project: projectSchema,
+      sql: z.string().min(1),
+      params: z.array(z.unknown()).default([]),
+      reason: z.string().min(3)
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, async ({ project, sql, params, reason }) => {
+    getProject(project);
+    assertWriteQuery(sql);
+    const started = Date.now();
+    const res = await getPool(project, "write").query("EXPLAIN (FORMAT JSON) " + sql, params);
+    audit({ project, tool: "db_write_preview", reason, durationMs: Date.now() - started, status: "success" });
+    return resultText({ executesWrite: false, plan: res.rows });
+  });
+
   server.registerTool("db_write", {
-    description: "Execute exactly one INSERT, UPDATE, or DELETE statement. This changes database data and should require explicit user approval in the MCP client.",
+    description: "Execute exactly one INSERT, UPDATE, or DELETE statement after explicit user approval.",
     inputSchema: {
       project: projectSchema,
       sql: z.string().min(1),
@@ -57,20 +75,11 @@ export function registerTools(server: McpServer) {
     const pool = getPool(project, "write");
     const client = await pool.connect();
     const started = Date.now();
-
     try {
       await client.query("BEGIN");
       const res = await client.query(sql, params);
       await client.query("COMMIT");
-      audit({
-        project,
-        tool: "db_write",
-        operation: sql.trim().split(/\s+/)[0]?.toUpperCase(),
-        rows: res.rowCount,
-        reason,
-        durationMs: Date.now() - started,
-        status: "success"
-      });
+      audit({ project, tool: "db_write", operation: sql.trim().split(/\s+/)[0]?.toUpperCase(), rows: res.rowCount, reason, durationMs: Date.now() - started, status: "success" });
       return resultText({ rowCount: res.rowCount, rows: res.rows });
     } catch (error) {
       await client.query("ROLLBACK");
