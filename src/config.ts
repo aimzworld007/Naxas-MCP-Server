@@ -8,6 +8,9 @@ const envSchema = z.object({
   PROJECTS_JSON: z.string().min(2),
   DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
   DB_LOCK_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+  MCP_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+  MCP_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
+  DEFAULT_MAX_WRITE_ROWS: z.coerce.number().int().positive().max(10000).default(100),
   AUDIT_LOG_ENABLED: z.string().default("true")
 });
 
