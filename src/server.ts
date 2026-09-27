@@ -99,19 +99,37 @@ app.get("/admin/status", mcpLimiter, async (req, res) => {
 
   const summaries = listProjectSummaries();
   const projects = await Promise.all(
-    summaries.map(async project => ({
-      ...project,
-      database: await checkProjectReadHealth(project.id)
-    }))
+    summaries.map(async project => {
+      const health = await checkProjectReadHealth(project.id);
+      return {
+        ...project,
+        database: {
+          ok: health.ok,
+          latencyMs: health.latencyMs
+        }
+      };
+    })
   );
 
+  const activity = getRecentAuditEvents(20).map(event => ({
+    ts: event.ts,
+    requestId: event.requestId,
+    project: event.project,
+    tool: event.tool,
+    status: event.status,
+    rows: event.rows,
+    operation: event.operation,
+    durationMs: event.durationMs
+  }));
+
+  res.setHeader("cache-control", "no-store");
   res.json({
     ok: projects.every(project => project.database.ok),
     version: "0.4.0",
     uptime: formatUptime(process.uptime()),
     mcpEndpoint: "/mcp",
     projects,
-    activity: getRecentAuditEvents(20)
+    activity
   });
 });
 
