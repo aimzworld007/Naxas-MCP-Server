@@ -127,10 +127,14 @@ input{width:100%;border:1px solid #d0d5dd;background:#fff;border-radius:12px;pad
 export const adminJs = `
 const state={token:sessionStorage.getItem("naxas_mcp_admin_token")||""};
 const $=id=>document.getElementById(id);
-const loginPanel=$("loginPanel"), dashboard=$("dashboard"), loginError=$("loginError");
+const loginPanel=$("loginPanel"),dashboard=$("dashboard"),loginError=$("loginError");
 
-function esc(value){return String(value??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));}
-function badge(value,on="Enabled",off="Disabled"){return '<span class="badge '+(value?'on':'off')+'">'+(value?on:off)+'</span>';}
+function esc(value){
+  return String(value??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\\\"":"&quot;","'":"&#039;"}[m]));
+}
+function badge(value,on="Enabled",off="Disabled"){
+  return '<span class="badge '+(value?'on':'off')+'">'+(value?on:off)+'</span>';
+}
 function fmtTime(v){try{return new Date(v).toLocaleString()}catch{return "—"}}
 
 async function api(path){
@@ -138,6 +142,34 @@ async function api(path){
   if(res.status===401) throw new Error("Unauthorized");
   if(!res.ok) throw new Error("Request failed");
   return res.json();
+}
+
+function renderProject(p){
+  return '<article class="project-card">'
+    +'<div class="project-top">'
+    +'<span class="project-name">'+esc(p.id)+'</span>'
+    +'<span class="health"><span class="dot '+(p.database.ok?'ok':'bad')+'"></span>'
+    +(p.database.ok?'Connected':'Unavailable')+' · '+esc(p.database.latencyMs)+'ms</span>'
+    +'</div>'
+    +'<div class="policy">'
+    +'<div class="policy-item"><span>Read access</span><strong>'+badge(p.readConfigured)+'</strong></div>'
+    +'<div class="policy-item"><span>Write connection</span><strong>'+badge(p.writeConfigured,"Configured","Not configured")+'</strong></div>'
+    +'<div class="policy-item"><span>Write execution</span><strong>'+badge(p.writeEnabled)+'</strong></div>'
+    +'<div class="policy-item"><span>DELETE</span><strong>'+(p.allowDelete?'<span class="badge warn">Enabled</span>':'<span class="badge off">Blocked</span>')+'</strong></div>'
+    +'<div class="policy-item"><span>Max write rows</span><strong>'+esc(p.maxWriteRows)+'</strong></div>'
+    +'<div class="policy-item"><span>Mode</span><strong>'+(p.writeEnabled?'Read + controlled write':'Read only')+'</strong></div>'
+    +'</div></article>';
+}
+
+function renderActivity(a){
+  return '<tr>'
+    +'<td>'+esc(fmtTime(a.ts))+'</td>'
+    +'<td>'+esc(a.project||"—")+'</td>'
+    +'<td>'+esc(a.tool||"—")+'</td>'
+    +'<td>'+esc(a.status||"—")+'</td>'
+    +'<td>'+esc(a.rows??"—")+'</td>'
+    +'<td>'+esc((a.requestId||"—").slice(0,12))+'</td>'
+    +'</tr>';
 }
 
 async function load(){
@@ -149,33 +181,12 @@ async function load(){
     $("gatewayStatus").textContent=data.ok?"Online":"Attention";
     $("gatewayMeta").textContent="v"+data.version+" · "+data.uptime;
     $("projectCount").textContent=data.projects.length;
-
-    $("projects").innerHTML=data.projects.map(p=>`
-      <article class="project-card">
-        <div class="project-top">
-          <span class="project-name">${esc(p.id)}</span>
-          <span class="health"><span class="dot ${p.database.ok?"ok":"bad"}"></span>${p.database.ok?"Connected":"Unavailable"} · ${esc(p.database.latencyMs)}ms</span>
-        </div>
-        <div class="policy">
-          <div class="policy-item"><span>Read access</span><strong>${badge(p.readConfigured)}</strong></div>
-          <div class="policy-item"><span>Write connection</span><strong>${badge(p.writeConfigured,"Configured","Not configured")}</strong></div>
-          <div class="policy-item"><span>Write execution</span><strong>${badge(p.writeEnabled)}</strong></div>
-          <div class="policy-item"><span>DELETE</span><strong>${p.allowDelete?'<span class="badge warn">Enabled</span>':'<span class="badge off">Blocked</span>'}</strong></div>
-          <div class="policy-item"><span>Max write rows</span><strong>${esc(p.maxWriteRows)}</strong></div>
-          <div class="policy-item"><span>Mode</span><strong>${p.writeEnabled?"Read + controlled write":"Read only"}</strong></div>
-        </div>
-      </article>`).join("");
+    $("projects").innerHTML=data.projects.map(renderProject).join("");
 
     const rows=data.activity||[];
-    $("activity").innerHTML=rows.length?rows.map(a=>`
-      <tr>
-        <td>${esc(fmtTime(a.ts))}</td>
-        <td>${esc(a.project||"—")}</td>
-        <td>${esc(a.tool||"—")}</td>
-        <td>${esc(a.status||"—")}</td>
-        <td>${esc(a.rows??"—")}</td>
-        <td>${esc((a.requestId||"—").slice(0,12))}</td>
-      </tr>`).join(""):'<tr><td colspan="6" class="empty">No MCP activity recorded since the last server restart.</td></tr>';
+    $("activity").innerHTML=rows.length
+      ?rows.map(renderActivity).join("")
+      :'<tr><td colspan="6" class="empty">No MCP activity recorded since the last server restart.</td></tr>';
   }catch(err){
     sessionStorage.removeItem("naxas_mcp_admin_token");
     state.token="";
@@ -194,12 +205,17 @@ $("loginForm").addEventListener("submit",e=>{
 });
 $("refresh").addEventListener("click",()=>state.token&&load());
 $("logout").addEventListener("click",()=>{
-  sessionStorage.removeItem("naxas_mcp_admin_token");state.token="";
-  dashboard.classList.add("hidden");loginPanel.classList.remove("hidden");$("token").value="";
+  sessionStorage.removeItem("naxas_mcp_admin_token");
+  state.token="";
+  dashboard.classList.add("hidden");
+  loginPanel.classList.remove("hidden");
+  $("token").value="";
 });
 $("copyEndpoint").addEventListener("click",async()=>{
-  const url=location.origin+"/mcp"; await navigator.clipboard.writeText(url);
-  $("copyEndpoint").textContent="Copied"; setTimeout(()=>$("copyEndpoint").textContent="Copy MCP URL",1200);
+  const url=location.origin+"/mcp";
+  await navigator.clipboard.writeText(url);
+  $("copyEndpoint").textContent="Copied";
+  setTimeout(()=>$("copyEndpoint").textContent="Copy MCP URL",1200);
 });
 if(state.token){$("token").value=state.token;load();}
 `;
