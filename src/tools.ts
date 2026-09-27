@@ -92,6 +92,7 @@ export function registerTools(server: McpServer) {
     const pool = getPool(project, "write");
     const client = await pool.connect();
     const started = Date.now();
+    let blockedByRowLimit = false;
 
     try {
       await client.query("BEGIN");
@@ -99,17 +100,7 @@ export function registerTools(server: McpServer) {
       const affectedRows = res.rowCount ?? 0;
 
       if (affectedRows > policy.maxWriteRows) {
-        await client.query("ROLLBACK");
-        audit({
-          project,
-          tool: "db_write",
-          operation,
-          rows: affectedRows,
-          maxWriteRows: policy.maxWriteRows,
-          reason,
-          durationMs: Date.now() - started,
-          status: "blocked_row_limit"
-        });
+        blockedByRowLimit = true;
         throw new Error(`Write blocked: affected ${affectedRows} rows, limit is ${policy.maxWriteRows}`);
       }
 
@@ -131,7 +122,14 @@ export function registerTools(server: McpServer) {
       } catch {
         // Ignore rollback errors; the original error is more useful to the caller.
       }
-      audit({ project, tool: "db_write", operation, reason, durationMs: Date.now() - started, status: "failed" });
+      audit({
+        project,
+        tool: "db_write",
+        operation,
+        reason,
+        durationMs: Date.now() - started,
+        status: blockedByRowLimit ? "blocked_row_limit" : "failed"
+      });
       throw error;
     } finally {
       client.release();
