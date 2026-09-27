@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getPool } from "./db.js";
-import { assertReadQuery, assertWriteQuery } from "./security/sql-policy.js";
+import { assertReadQuery, assertWriteQuery, getWriteOperation } from "./security/sql-policy.js";
 import { audit } from "./audit.js";
 import { getProject } from "./projects.js";
 
@@ -52,12 +52,23 @@ export function registerTools(server: McpServer) {
     },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
   }, async ({ project, sql, params, reason }) => {
-    getProject(project);
+    const policy = getProject(project);
     assertWriteQuery(sql);
+    const operation = getWriteOperation(sql);
+    if (!policy.writeUrl) throw new Error("Write preview is unavailable because this project has no write connection");
+    if (operation === "DELETE" && !policy.allowDelete) throw new Error("DELETE is disabled for this project");
+
     const started = Date.now();
     const res = await getPool(project, "write").query("EXPLAIN (FORMAT JSON) " + sql, params);
-    audit({ project, tool: "db_write_preview", reason, durationMs: Date.now() - started, status: "success" });
-    return resultText({ executesWrite: false, plan: res.rows });
+    audit({ project, tool: "db_write_preview", operation, reason, durationMs: Date.now() - started, status: "success" });
+    return resultText({
+      executesWrite: false,
+      operation,
+      writeEnabled: policy.writeEnabled,
+      allowDelete: policy.allowDelete,
+      maxWriteRows: policy.maxWriteRows,
+      plan: res.rows
+    });
   });
 
   server.registerTool("db_write", {
@@ -70,8 +81,14 @@ export function registerTools(server: McpServer) {
     },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false }
   }, async ({ project, sql, params, reason }) => {
-    getProject(project);
+    const policy = getProject(project);
     assertWriteQuery(sql);
+    const operation = getWriteOperation(sql);
+
+    if (!policy.writeEnabled) throw new Error("Write operations are disabled for this project");
+    if (!policy.writeUrl) throw new Error("Write connection is not configured for this project");
+    if (operation === "DELETE" && !policy.allowDelete) throw new Error("DELETE is disabled for this project");
+
     const pool = getPool(project, "write");
     const client = await pool.connect();
     const started = Date.now();
@@ -79,20 +96,42 @@ export function registerTools(server: McpServer) {
     try {
       await client.query("BEGIN");
       const res = await client.query(sql, params);
+      const affectedRows = res.rowCount ?? 0;
+
+      if (affectedRows > policy.maxWriteRows) {
+        await client.query("ROLLBACK");
+        audit({
+          project,
+          tool: "db_write",
+          operation,
+          rows: affectedRows,
+          maxWriteRows: policy.maxWriteRows,
+          reason,
+          durationMs: Date.now() - started,
+          status: "blocked_row_limit"
+        });
+        throw new Error(`Write blocked: affected ${affectedRows} rows, limit is ${policy.maxWriteRows}`);
+      }
+
       await client.query("COMMIT");
       audit({
         project,
         tool: "db_write",
-        operation: sql.trim().split(/\s+/)[0]?.toUpperCase(),
-        rows: res.rowCount,
+        operation,
+        rows: affectedRows,
+        maxWriteRows: policy.maxWriteRows,
         reason,
         durationMs: Date.now() - started,
         status: "success"
       });
-      return resultText({ rowCount: res.rowCount, rows: res.rows });
+      return resultText({ operation, rowCount: affectedRows, rows: res.rows });
     } catch (error) {
-      await client.query("ROLLBACK");
-      audit({ project, tool: "db_write", reason, durationMs: Date.now() - started, status: "failed" });
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        // Ignore rollback errors; the original error is more useful to the caller.
+      }
+      audit({ project, tool: "db_write", operation, reason, durationMs: Date.now() - started, status: "failed" });
       throw error;
     } finally {
       client.release();
