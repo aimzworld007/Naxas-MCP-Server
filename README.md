@@ -30,9 +30,12 @@ Omit `writeUrl` to make a project permanently read-only.
 | --- | --- | --- |
 | `db_read` | SELECT / WITH / EXPLAIN | Read without write permission |
 | `db_schema` | Inspect schema metadata | Read without write permission |
+| `db_write_preview` | Non-executing EXPLAIN for a proposed write | Read/preview |
 | `db_write` | One INSERT / UPDATE / DELETE | Ask for explicit confirmation |
 
 The server blocks DDL, role/privilege changes, COPY, transaction-control statements, and multiple write statements.
+
+Recommended write flow: inspect with `db_read` → preview with `db_write_preview` → ask the user for approval → execute with `db_write` → verify with `db_read`.
 
 ## Security model
 
@@ -69,6 +72,15 @@ POST https://your-domain.example/mcp
 ```
 
 See [Coolify deployment](docs/COOLIFY.md) and [ChatGPT connection](docs/CHATGPT.md).
+
+## Development checks
+
+```bash
+npm install
+npm run check
+```
+
+This runs strict TypeScript checking, SQL-policy tests, and a production build.
 
 ## PostgreSQL roles
 
