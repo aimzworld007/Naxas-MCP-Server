@@ -30,3 +30,18 @@ export function getPool(projectId: string, mode: "read" | "write") {
 
   return pool;
 }
+
+
+export async function checkProjectReadHealth(projectId: string) {
+  const started = Date.now();
+  try {
+    await getPool(projectId, "read").query("SELECT 1");
+    return { ok: true, latencyMs: Date.now() - started };
+  } catch (error) {
+    return {
+      ok: false,
+      latencyMs: Date.now() - started,
+      error: error instanceof Error ? error.message : "Database check failed"
+    };
+  }
+}
