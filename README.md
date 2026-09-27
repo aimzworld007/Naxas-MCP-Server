@@ -1,28 +1,85 @@
 # Naxas MCP Server
 
-Central, production-oriented MCP gateway for Naxas and future PostgreSQL projects.
+Open-source, self-hostable PostgreSQL MCP gateway for ChatGPT-compatible and other MCP clients.
+
+It is designed around one rule: **read by default; write only through a separately privileged database role and an approval-capable MCP client.**
+
+## Why this exists
+
+A single deployment can safely expose multiple PostgreSQL projects without accepting arbitrary database URLs from tool calls. Projects are configured only on the server through `PROJECTS_JSON`.
+
+Example:
+
+```json
+{
+  "naxas": {
+    "readUrl": "postgresql://reader:***@postgres:5432/naxas",
+    "writeUrl": "postgresql://writer:***@postgres:5432/naxas"
+  },
+  "another_app": {
+    "readUrl": "postgresql://reader:***@postgres:5432/another_app"
+  }
+}
+```
+
+Omit `writeUrl` to make a project permanently read-only.
+
+## Tools
+
+| Tool | Purpose | Recommended client policy |
+| --- | --- | --- |
+| `db_read` | SELECT / WITH / EXPLAIN | Read without write permission |
+| `db_schema` | Inspect schema metadata | Read without write permission |
+| `db_write` | One INSERT / UPDATE / DELETE | Ask for explicit confirmation |
+
+The server blocks DDL, role/privilege changes, COPY, transaction-control statements, and multiple write statements.
 
 ## Security model
 
-- Read tools use a dedicated read-only PostgreSQL role.
-- Write tools are exposed separately and must be approval-gated by the MCP client.
-- DDL, privilege changes, COPY/program execution, and transaction-control statements are blocked.
-- Project connections are server-side allowlisted; callers never supply database URLs.
-- PostgreSQL should remain on a private/internal network.
-- Every tool call is audit logged without storing database credentials.
+Security is layered:
 
-## Initial tools
+1. MCP client permission/confirmation.
+2. Server-side project allowlist.
+3. SQL policy enforcement.
+4. Separate PostgreSQL read/write roles.
+5. PostgreSQL privileges remain the final authority.
+6. Query and lock timeouts.
+7. Structured audit events.
 
-- `db_read` — SELECT/WITH/EXPLAIN only.
-- `db_schema` — tables, columns, indexes, constraints.
-- `db_write` — INSERT/UPDATE/DELETE only; intended for explicit client approval.
+Do not grant the writer role superuser, owner, schema-management, or role-management capabilities.
 
-## Deployment
+## Quick start
 
-Target endpoint: `https://mcp.naxasit.com`
+```bash
+cp .env.example .env
+# Edit .env with strong credentials and PROJECTS_JSON
+docker compose up --build
+```
 
-Deploy the Docker image in Coolify, configure environment variables from `.env.example`, and keep PostgreSQL port 5432 private.
+Health check:
 
-## Status
+```text
+GET http://127.0.0.1:3000/health
+```
 
-Phase 1 scaffold. Naxas is the first configured project; additional projects can be added through the server-side project registry.
+Remote MCP endpoint:
+
+```text
+POST https://your-domain.example/mcp
+```
+
+See [Coolify deployment](docs/COOLIFY.md) and [ChatGPT connection](docs/CHATGPT.md).
+
+## PostgreSQL roles
+
+`sql/postgres-roles.sql` contains a conservative starting point. Customize database name, credentials, and table-level writer grants before running it.
+
+For public deployments, create your own roles rather than reusing the application owner/admin account.
+
+## Open source
+
+Licensed under the MIT License. You can fork, self-host, modify, and redistribute this project subject to the license terms.
+
+## Current maturity
+
+Pre-1.0. Review the code and security model before using it with production databases. Production operators remain responsible for PostgreSQL privileges, secrets, network isolation, and MCP client permissions.
