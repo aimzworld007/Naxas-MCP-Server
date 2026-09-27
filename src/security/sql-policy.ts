@@ -22,7 +22,10 @@ export function assertReadQuery(sql: string) {
 
 export function assertWriteQuery(sql: string) {
   const q = stripLeadingComments(sql);
-  getWriteOperation(q);
+  const operation = getWriteOperation(q);
+  if ((operation === "UPDATE" || operation === "DELETE") && !/\bwhere\b/i.test(q)) {
+    throw new Error(operation + " requires a WHERE clause");
+  }
   if (forbidden.test(q) || txControl.test(q)) throw new Error("Statement blocked by SQL policy");
   if (q.includes(";") && q.replace(/;\s*$/, "").includes(";")) throw new Error("Multiple statements are not allowed");
 }
