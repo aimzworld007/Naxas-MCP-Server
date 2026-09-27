@@ -71,13 +71,21 @@ GET http://127.0.0.1:3000/health
 GET http://127.0.0.1:3000/ready
 ```
 
+Admin dashboard:
+
+```text
+GET https://your-domain.example/
+```
+
+The dashboard requires the MCP bearer token before operational data is displayed.
+
 Remote MCP endpoint:
 
 ```text
 POST https://your-domain.example/mcp
 ```
 
-See [Coolify deployment](docs/COOLIFY.md), [ChatGPT connection](docs/CHATGPT.md), and the [Naxas live read-only rollout](docs/NAXAS_LIVE_ROLLOUT.md).
+See [Coolify deployment](docs/COOLIFY.md), [ChatGPT connection](docs/CHATGPT.md), [Admin dashboard](docs/ADMIN_DASHBOARD.md), and the [Naxas live read-only rollout](docs/NAXAS_LIVE_ROLLOUT.md).
 
 ## Development checks
 

@@ -56,3 +56,26 @@ export function getProject(id: string): ProjectConfig {
 export function listProjectIds(): string[] {
   return [...projects.keys()].sort();
 }
+
+
+export interface ProjectSummary {
+  id: string;
+  readConfigured: boolean;
+  writeConfigured: boolean;
+  writeEnabled: boolean;
+  allowDelete: boolean;
+  maxWriteRows: number;
+}
+
+export function listProjectSummaries(): ProjectSummary[] {
+  return [...projects.values()]
+    .map(project => ({
+      id: project.id,
+      readConfigured: Boolean(project.readUrl),
+      writeConfigured: Boolean(project.writeUrl),
+      writeEnabled: project.writeEnabled,
+      allowDelete: project.allowDelete,
+      maxWriteRows: project.maxWriteRows
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
