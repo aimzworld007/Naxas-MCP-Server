@@ -17,7 +17,12 @@ BEGIN
 END
 $$;
 
-GRANT CONNECT ON DATABASE current_database() TO naxas_readonly;
+DO $$
+BEGIN
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO naxas_readonly', current_database());
+END
+$$;
+
 GRANT USAGE ON SCHEMA public TO naxas_readonly;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO naxas_readonly;
 GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO naxas_readonly;
@@ -34,4 +39,8 @@ ALTER ROLE naxas_readonly SET idle_in_transaction_session_timeout = '30s';
 
 -- Optional hardening: prevent temp-table creation by revoking TEMP at database level.
 -- Review application needs before enabling:
--- REVOKE TEMP ON DATABASE <YOUR_DATABASE_NAME> FROM naxas_readonly;
+-- DO $$
+-- BEGIN
+--   EXECUTE format('REVOKE TEMP ON DATABASE %I FROM naxas_readonly', current_database());
+-- END
+-- $$;
