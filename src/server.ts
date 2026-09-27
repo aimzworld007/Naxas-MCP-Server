@@ -7,7 +7,10 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { env, allowedHosts } from "./config.js";
 import { registerTools } from "./tools.js";
 import { runWithRequestContext } from "./context.js";
-import { listProjectIds } from "./projects.js";
+import { listProjectIds, listProjectSummaries } from "./projects.js";
+import { checkProjectReadHealth } from "./db.js";
+import { getRecentAuditEvents } from "./audit.js";
+import { adminCss, adminHtml, adminJs } from "./admin-ui.js";
 
 function safeEqual(a: string, b: string) {
   const aa = Buffer.from(a);
@@ -17,6 +20,26 @@ function safeEqual(a: string, b: string) {
 
 function errorBody(code: string, message: string, requestId: string) {
   return { error: { code, message, requestId } };
+}
+
+function getBearerToken(req: express.Request) {
+  const auth = req.header("authorization") || "";
+  return auth.startsWith("Bearer ") ? auth.slice(7) : "";
+}
+
+function isAuthorized(req: express.Request) {
+  const token = getBearerToken(req);
+  return Boolean(token) && safeEqual(token, env.MCP_BEARER_TOKEN);
+}
+
+function formatUptime(seconds: number) {
+  const total = Math.max(0, Math.floor(seconds));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  if (days) return `${days}d ${hours}h`;
+  if (hours) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
 
 const app = express();
@@ -45,7 +68,19 @@ const mcpLimiter = rateLimit({
   limit: env.MCP_RATE_LIMIT_MAX,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: { error: { code: "RATE_LIMITED", message: "Too many MCP requests" } }
+  message: { error: { code: "RATE_LIMITED", message: "Too many requests" } }
+});
+
+app.get("/", (_req, res) => {
+  res.type("html").send(adminHtml);
+});
+
+app.get("/admin/app.css", (_req, res) => {
+  res.type("css").send(adminCss);
+});
+
+app.get("/admin/app.js", (_req, res) => {
+  res.type("application/javascript").send(adminJs);
 });
 
 app.get("/health", (_req, res) => {
@@ -56,16 +91,38 @@ app.get("/ready", (_req, res) => {
   res.json({ ok: true, configuredProjects: listProjectIds().length });
 });
 
-app.post("/mcp", mcpLimiter, async (req, res) => {
+app.get("/admin/status", mcpLimiter, async (req, res) => {
   const requestId = String(res.getHeader("x-request-id") || "");
-  const auth = req.header("authorization") || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-
-  if (!token || !safeEqual(token, env.MCP_BEARER_TOKEN)) {
+  if (!isAuthorized(req)) {
     return res.status(401).json(errorBody("UNAUTHORIZED", "Unauthorized", requestId));
   }
 
-  const server = new McpServer({ name: "naxas-mcp-server", version: "0.3.0" });
+  const summaries = listProjectSummaries();
+  const projects = await Promise.all(
+    summaries.map(async project => ({
+      ...project,
+      database: await checkProjectReadHealth(project.id)
+    }))
+  );
+
+  res.json({
+    ok: projects.every(project => project.database.ok),
+    version: "0.4.0",
+    uptime: formatUptime(process.uptime()),
+    mcpEndpoint: "/mcp",
+    projects,
+    activity: getRecentAuditEvents(20)
+  });
+});
+
+app.post("/mcp", mcpLimiter, async (req, res) => {
+  const requestId = String(res.getHeader("x-request-id") || "");
+
+  if (!isAuthorized(req)) {
+    return res.status(401).json(errorBody("UNAUTHORIZED", "Unauthorized", requestId));
+  }
+
+  const server = new McpServer({ name: "naxas-mcp-server", version: "0.4.0" });
   registerTools(server);
 
   const transport = new StreamableHTTPServerTransport({
