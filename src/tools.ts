@@ -42,8 +42,26 @@ export function registerTools(server: McpServer) {
     return resultText({ schema, columns: res.rows });
   });
 
+  server.registerTool("db_write_preview", {
+    description: "Preview one data-change statement with PostgreSQL EXPLAIN only; no write is executed.",
+    inputSchema: {
+      project: projectSchema,
+      sql: z.string().min(1),
+      params: z.array(z.unknown()).default([]),
+      reason: z.string().min(3)
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, async ({ project, sql, params, reason }) => {
+    getProject(project);
+    assertWriteQuery(sql);
+    const started = Date.now();
+    const res = await getPool(project, "write").query("EXPLAIN (FORMAT JSON) " + sql, params);
+    audit({ project, tool: "db_write_preview", reason, durationMs: Date.now() - started, status: "success" });
+    return resultText({ executesWrite: false, plan: res.rows });
+  });
+
   server.registerTool("db_write", {
-    description: "Execute exactly one INSERT, UPDATE, or DELETE statement. This changes database data and should require explicit user approval in the MCP client.",
+    description: "Execute exactly one INSERT, UPDATE, or DELETE statement after explicit user approval.",
     inputSchema: {
       project: projectSchema,
       sql: z.string().min(1),
