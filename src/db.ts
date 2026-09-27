@@ -13,9 +13,13 @@ export function getPool(projectId: string, mode: "read" | "write") {
   const project = getProject(projectId);
   const key = poolKey(project.id, mode);
   let pool = pools.get(key);
+
   if (!pool) {
+    const connectionString = mode === "read" ? project.readUrl : project.writeUrl;
+    if (!connectionString) throw new Error(`Write access is not configured for project "${project.id}"`);
+
     pool = new Pool({
-      connectionString: mode === "read" ? project.readUrl : project.writeUrl,
+      connectionString,
       max: 5,
       application_name: "naxas-mcp-" + mode,
       statement_timeout: env.DB_STATEMENT_TIMEOUT_MS,
@@ -23,5 +27,6 @@ export function getPool(projectId: string, mode: "read" | "write") {
     });
     pools.set(key, pool);
   }
+
   return pool;
 }
