@@ -4,7 +4,10 @@ import { env } from "./config.js";
 const projectId = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/);
 const projectValue = z.object({
   readUrl: z.string().min(1),
-  writeUrl: z.string().min(1).optional()
+  writeUrl: z.string().min(1).optional(),
+  writeEnabled: z.boolean().default(false),
+  allowDelete: z.boolean().default(false),
+  maxWriteRows: z.number().int().positive().max(10000).optional()
 });
 const registrySchema = z.record(projectId, projectValue);
 
@@ -12,6 +15,9 @@ export interface ProjectConfig {
   id: string;
   readUrl: string;
   writeUrl?: string;
+  writeEnabled: boolean;
+  allowDelete: boolean;
+  maxWriteRows: number;
 }
 
 function loadRegistry(): Map<string, ProjectConfig> {
@@ -26,7 +32,17 @@ function loadRegistry(): Map<string, ProjectConfig> {
   const entries = Object.entries(parsed);
   if (!entries.length) throw new Error("PROJECTS_JSON must contain at least one project");
 
-  return new Map(entries.map(([id, value]) => [id, { id, ...value }]));
+  return new Map(entries.map(([id, value]) => [
+    id,
+    {
+      id,
+      readUrl: value.readUrl,
+      writeUrl: value.writeUrl,
+      writeEnabled: value.writeEnabled,
+      allowDelete: value.allowDelete,
+      maxWriteRows: value.maxWriteRows ?? env.DEFAULT_MAX_WRITE_ROWS
+    }
+  ]));
 }
 
 const projects = loadRegistry();

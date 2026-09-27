@@ -14,7 +14,10 @@ Example:
 {
   "naxas": {
     "readUrl": "postgresql://reader:***@postgres:5432/naxas",
-    "writeUrl": "postgresql://writer:***@postgres:5432/naxas"
+    "writeUrl": "postgresql://writer:***@postgres:5432/naxas",
+    "writeEnabled": true,
+    "allowDelete": false,
+    "maxWriteRows": 50
   },
   "another_app": {
     "readUrl": "postgresql://reader:***@postgres:5432/another_app"
@@ -22,7 +25,7 @@ Example:
 }
 ```
 
-Omit `writeUrl` to make a project permanently read-only.
+Omit `writeUrl` to make a project permanently read-only. Even when `writeUrl` exists, writes stay disabled unless `writeEnabled: true` is set. DELETE requires `allowDelete: true`. `maxWriteRows` caps the number of rows a single committed write may affect.
 
 ## Tools
 
@@ -47,7 +50,9 @@ Security is layered:
 4. Separate PostgreSQL read/write roles.
 5. PostgreSQL privileges remain the final authority.
 6. Query and lock timeouts.
-7. Structured audit events.
+7. Structured audit events with request IDs.
+8. HTTP rate limiting and request-size limits.
+9. Per-project write enablement, DELETE opt-in, and max-row rollback guards.
 
 Do not grant the writer role superuser, owner, schema-management, or role-management capabilities.
 
@@ -59,10 +64,11 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Health check:
+Health and readiness checks:
 
 ```text
 GET http://127.0.0.1:3000/health
+GET http://127.0.0.1:3000/ready
 ```
 
 Remote MCP endpoint:
