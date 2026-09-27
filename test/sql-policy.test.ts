@@ -25,4 +25,6 @@ test("write policy rejects unsafe classes", () => {
   assert.throws(() => assertWriteQuery("GRANT ALL ON t TO x"));
   assert.throws(() => assertWriteQuery("BEGIN"));
   assert.throws(() => assertWriteQuery("UPDATE t SET a=1; DELETE FROM t"));
+  assert.throws(() => assertWriteQuery("UPDATE t SET a = 1"));
+  assert.throws(() => assertWriteQuery("DELETE FROM t"));
 });
