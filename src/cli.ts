@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import dotenv from "dotenv";
@@ -185,8 +186,8 @@ function printChecks(checks: Array<{ label: string; ok: boolean; detail?: string
 }
 
 function start() {
-  const serverPath = new URL("./server.js", import.meta.url);
-  const child = spawn(process.execPath, [serverPath.pathname], {
+  const serverPath = fileURLToPath(new URL("./server.js", import.meta.url));
+  const child = spawn(process.execPath, [serverPath], {
     stdio: "inherit",
     env: process.env
   });
