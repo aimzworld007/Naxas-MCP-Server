@@ -56,6 +56,42 @@ Security is layered:
 
 Do not grant the writer role superuser, owner, schema-management, or role-management capabilities.
 
+## Install with npm
+
+After the package is published to npm, users can run:
+
+```bash
+npx naxas-mcp init
+```
+
+or install globally:
+
+```bash
+npm install -g naxas-mcp
+naxas-mcp init
+```
+
+Recommended first-run flow:
+
+```bash
+naxas-mcp init
+# edit .env and replace the database password placeholder
+naxas-mcp doctor
+naxas-mcp start
+```
+
+CLI commands:
+
+| Command | Purpose |
+| --- | --- |
+| `naxas-mcp init` | Create a safe read-only `.env` template and strong MCP token |
+| `naxas-mcp doctor` | Validate config and test PostgreSQL read connectivity |
+| `naxas-mcp generate-token` | Generate a secure bearer token |
+| `naxas-mcp start` | Start the MCP gateway |
+| `naxas-mcp help` | Show CLI help |
+
+`init` intentionally does not collect the database password interactively. It writes a placeholder so the real password can be added directly to a local `.env` or a deployment secret store such as Coolify.
+
 ## Quick start
 
 ```bash
