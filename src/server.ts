@@ -125,7 +125,7 @@ app.get("/admin/status", mcpLimiter, async (req, res) => {
   res.setHeader("cache-control", "no-store");
   res.json({
     ok: projects.every(project => project.database.ok),
-    version: "0.4.0",
+    version: "0.5.0",
     uptime: formatUptime(process.uptime()),
     mcpEndpoint: "/mcp",
     projects,
@@ -140,7 +140,7 @@ app.post("/mcp", mcpLimiter, async (req, res) => {
     return res.status(401).json(errorBody("UNAUTHORIZED", "Unauthorized", requestId));
   }
 
-  const server = new McpServer({ name: "naxas-mcp-server", version: "0.4.0" });
+  const server = new McpServer({ name: "naxas-mcp-server", version: "0.5.0" });
   registerTools(server);
 
   const transport = new StreamableHTTPServerTransport({
