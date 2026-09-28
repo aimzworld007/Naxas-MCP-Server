@@ -1,18 +1,54 @@
 {
-  "name": "naxas-mcp-server",
-  "version": "0.4.0",
-  "private": true,
+  "name": "naxas-mcp",
+  "version": "0.5.0",
+  "description": "Secure self-hosted PostgreSQL MCP gateway with read-only defaults, controlled writes, audit logging, and Docker/Coolify support.",
   "type": "module",
+  "license": "MIT",
+  "author": "Ainul Islam",
   "engines": {
     "node": ">=20"
   },
+  "bin": {
+    "naxas-mcp": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "docs",
+    "sql",
+    ".env.example",
+    "Dockerfile",
+    "docker-compose.yml"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aimzworld007/Naxas-MCP-Server.git"
+  },
+  "homepage": "https://github.com/aimzworld007/Naxas-MCP-Server#readme",
+  "bugs": {
+    "url": "https://github.com/aimzworld007/Naxas-MCP-Server/issues"
+  },
+  "keywords": [
+    "mcp",
+    "postgresql",
+    "postgres",
+    "ai",
+    "chatgpt",
+    "database",
+    "gateway",
+    "self-hosted",
+    "coolify",
+    "docker"
+  ],
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run typecheck && npm test && npm run build",
+    "prepublishOnly": "npm run check"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.1",
