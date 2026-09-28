@@ -17,6 +17,10 @@ npm install -g naxas-mcp
 naxas-mcp init
 ```
 
+## Run on localhost
+
+For local PostgreSQL, Docker PostgreSQL, and VPS-private PostgreSQL setup details, see [LOCALHOST.md](LOCALHOST.md).
+
 ## Maintainer release
 
 Prerequisites:
