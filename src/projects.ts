@@ -4,6 +4,7 @@ import { assertProjectAccess, type Principal } from "./security/users.js";
 
 const projectId = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/);
 const projectValue = z.object({
+  name: z.string().min(1).max(100).optional(),
   readUrl: z.string().min(1),
   writeUrl: z.string().min(1).optional(),
   writeEnabled: z.boolean().default(false),
@@ -14,6 +15,7 @@ const registrySchema = z.record(projectId, projectValue);
 
 export interface ProjectConfig {
   id: string;
+  name: string;
   readUrl: string;
   writeUrl?: string;
   writeEnabled: boolean;
@@ -37,6 +39,7 @@ function loadRegistry(): Map<string, ProjectConfig> {
     id,
     {
       id,
+      name: value.name ?? id,
       readUrl: value.readUrl,
       writeUrl: value.writeUrl,
       writeEnabled: value.writeEnabled,
@@ -66,6 +69,7 @@ export function listProjectIds(): string[] {
 
 export interface ProjectSummary {
   id: string;
+  name: string;
   readConfigured: boolean;
   writeConfigured: boolean;
   writeEnabled: boolean;
@@ -77,6 +81,7 @@ export function listProjectSummaries(): ProjectSummary[] {
   return [...projects.values()]
     .map(project => ({
       id: project.id,
+      name: project.name,
       readConfigured: Boolean(project.readUrl),
       writeConfigured: Boolean(project.writeUrl),
       writeEnabled: project.writeEnabled,

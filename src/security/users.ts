@@ -4,16 +4,20 @@ import { z } from "zod";
 const idSchema = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/);
 const userSchema = z.strictObject({
   tokenSha256: z.string().regex(/^[a-fA-F0-9]{64}$/),
-  projects: z.array(idSchema).min(1),
-  writeEnabled: z.boolean().default(false)
+  projects: z.array(z.union([idSchema, z.literal("*")])).min(1),
+  writeEnabled: z.boolean().default(false),
+  writeProjects: z.array(idSchema).optional()
 });
 const usersSchema = z.record(idSchema, userSchema);
+export type UserRecord = z.input<typeof userSchema>;
+export const userIdSchema = idSchema;
 
 export interface Principal {
   id: string;
   kind: "owner" | "user";
   projects: ReadonlySet<string>;
   writeEnabled: boolean;
+  writeProjects?: ReadonlySet<string>;
 }
 
 export function tokenSha256(token: string): string {
@@ -45,11 +49,19 @@ export function createAuthenticator(
   const seenHashes = new Set([ownerHash.toString("hex")]);
 
   for (const [id, value] of Object.entries(users)) {
-    if (value.projects.some(project => !available.has(project))) {
+    const allProjects = value.projects.length === 1 && value.projects[0] === "*";
+    if (value.projects.includes("*") && !allProjects) {
+      throw new Error(`MCP_USERS_JSON user "${id}" must use wildcard alone`);
+    }
+    if (!allProjects && value.projects.some(project => !available.has(project))) {
       throw new Error(`MCP_USERS_JSON user "${id}" references an unknown project`);
     }
     if (new Set(value.projects).size !== value.projects.length) {
       throw new Error(`MCP_USERS_JSON user "${id}" repeats a project`);
+    }
+    if (value.writeProjects && (new Set(value.writeProjects).size !== value.writeProjects.length ||
+      value.writeProjects.some(project => !available.has(project) || (!allProjects && !value.projects.includes(project))))) {
+      throw new Error(`MCP_USERS_JSON user "${id}" has invalid write projects`);
     }
     const hash = value.tokenSha256.toLowerCase();
     if (seenHashes.has(hash)) {
@@ -61,8 +73,9 @@ export function createAuthenticator(
       principal: {
         id,
         kind: "user",
-        projects: new Set(value.projects),
-        writeEnabled: value.writeEnabled
+        projects: new Set(allProjects ? available : value.projects),
+        writeEnabled: value.writeEnabled || Boolean(value.writeProjects?.length),
+        writeProjects: value.writeProjects ? new Set(value.writeProjects) : undefined
       }
     });
   }
@@ -85,8 +98,8 @@ export function assertProjectAccess(principal: Principal, project: string) {
   }
 }
 
-export function assertWriteAccess(principal: Principal) {
-  if (!principal.writeEnabled) {
+export function assertWriteAccess(principal: Principal, project?: string) {
+  if (!principal.writeEnabled || (project && principal.writeProjects && !principal.writeProjects.has(project))) {
     throw new Error("Write operations are disabled for this user");
   }
 }

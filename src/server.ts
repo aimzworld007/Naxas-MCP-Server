@@ -12,7 +12,9 @@ import { listProjectIds, listProjectSummaries } from "./projects.js";
 import { checkProjectReadHealth } from "./db.js";
 import { getRecentAuditEvents } from "./audit.js";
 import { adminCss, adminHtml, adminJs } from "./admin-ui.js";
-import { createAuthenticator, samePrincipal, type Principal } from "./security/users.js";
+import { samePrincipal, type Principal } from "./security/users.js";
+import { AccessStore } from "./security/access-store.js";
+import { z } from "zod";
 
 function errorBody(code: string, message: string, requestId: string) {
   return { error: { code, message, requestId } };
@@ -23,7 +25,8 @@ function getBearerToken(req: express.Request) {
   return auth.startsWith("Bearer ") ? auth.slice(7) : "";
 }
 
-const authenticate = createAuthenticator(env.MCP_BEARER_TOKEN, listProjectIds(), env.MCP_USERS_JSON);
+const access = new AccessStore(env.MCP_BEARER_TOKEN, listProjectIds(), env.MCP_ACCESS_FILE, env.MCP_USERS_JSON);
+const authenticate = (token: string) => access.authenticate(token);
 
 function formatUptime(seconds: number) {
   const total = Math.max(0, Math.floor(seconds));
@@ -124,6 +127,7 @@ app.get("/admin/status", mcpLimiter, async (req, res) => {
     uptime: formatUptime(process.uptime()),
     mcpEndpoint: "/mcp",
     projects,
+    users: access.list(),
     activity
   });
 });
@@ -133,6 +137,46 @@ const mcpSessions = new Map<string, {
   server: McpServer;
   principal: Principal;
 }>();
+
+const grantsSchema = z.strictObject({
+  projects: z.array(z.string()).min(1),
+  writeProjects: z.array(z.string()).default([])
+});
+const createUserSchema = grantsSchema.extend({ id: z.string() });
+
+async function changeAccess(req: express.Request, res: express.Response,
+  action: () => unknown) {
+  const requestId = String(res.getHeader("x-request-id") || "");
+  if (authenticate(getBearerToken(req))?.kind !== "owner") {
+    return res.status(401).json(errorBody("UNAUTHORIZED", "Unauthorized", requestId));
+  }
+  try {
+    const result = action();
+    // Tool handlers capture a principal on initialization. Close old sessions so
+    // every permission edit takes effect on the next MCP connection.
+    await Promise.allSettled([...mcpSessions.values()].map(session => session.transport.close()));
+    res.setHeader("cache-control", "no-store");
+    return res.json({ ok: true, result });
+  } catch (error) {
+    return res.status(400).json(errorBody("INVALID_ACCESS_CHANGE",
+      error instanceof Error ? error.message : "Invalid change", requestId));
+  }
+}
+
+app.post("/admin/users", mcpLimiter, (req, res) => changeAccess(req, res, () => {
+  const data = createUserSchema.parse(req.body);
+  return { token: access.create(data.id, data.projects, data.writeProjects) };
+}));
+app.put("/admin/users/:id", mcpLimiter, (req, res) => changeAccess(req, res, () => {
+  const data = grantsSchema.parse(req.body);
+  access.update(req.params.id as string, data.projects, data.writeProjects);
+}));
+app.post("/admin/users/:id/rotate", mcpLimiter, (req, res) => changeAccess(req, res, () => ({
+  token: access.rotate(req.params.id as string)
+})));
+app.delete("/admin/users/:id", mcpLimiter, (req, res) => changeAccess(req, res, () => {
+  access.remove(req.params.id as string);
+}));
 
 async function handleMcpRequest(req: express.Request, res: express.Response) {
   const requestId = String(res.getHeader("x-request-id") || "");

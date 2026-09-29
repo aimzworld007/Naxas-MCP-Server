@@ -13,7 +13,7 @@ export const adminHtml = `<!doctype html>
       <div>
         <p class="eyebrow">NAXAS</p>
         <h1>MCP Gateway</h1>
-        <p class="sub">Secure PostgreSQL access for ChatGPT and MCP clients.</p>
+        <p class="sub">Secure PostgreSQL access for VS Code and MCP clients.</p>
       </div>
       <div class="top-actions">
         <button id="copyEndpoint" class="button ghost">Copy MCP URL</button>
@@ -56,6 +56,14 @@ export const adminHtml = `<!doctype html>
           <small>Bearer auth + policy guards</small>
         </article>
       </div>
+
+      <section class="panel">
+        <div class="section-head"><div><p class="eyebrow">ACCESS</p><h2>Users and project grants</h2></div></div>
+        <p class="muted">One token per user. Select projects and enable write only where a writer connection is configured. Tokens appear once; copy them privately.</p>
+        <div id="accessMessage" role="status"></div>
+        <form id="userForm" class="login-form"><input id="userId" placeholder="New user ID" required pattern="[a-z0-9][a-z0-9_-]{0,63}" /><button class="button" type="submit">Create user</button></form>
+        <div id="users"></div>
+      </section>
 
       <section class="panel">
         <div class="section-head">
@@ -106,6 +114,7 @@ button,input{font:inherit}.shell{max-width:1180px;margin:0 auto;padding:32px 20p
 h1,h2,p{margin-top:0}h1{font-size:34px;letter-spacing:-.03em;margin-bottom:8px}h2{font-size:20px;margin-bottom:6px}
 .sub,.muted{color:#667085}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.18em;color:#475467;margin-bottom:8px}
 .top-actions,.login-form{display:flex;gap:10px}.button{border:0;border-radius:12px;background:#111827;color:white;padding:11px 16px;font-weight:700;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,.08)}
+.user-row{border:1px solid #e4e7ec;border-radius:12px;padding:14px;margin-top:12px}.grant-row{display:flex;gap:10px;align-items:center;margin:8px 0}.grant-row input{width:auto}.user-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.token-once{overflow-wrap:anywhere;padding:12px;background:#ecfdf3;border-radius:10px}
 .button:hover{opacity:.92}.button.ghost{background:white;color:#344054;border:1px solid #d0d5dd;box-shadow:none}.button.small{padding:9px 12px;font-size:13px}
 .panel{background:rgba(255,255,255,.92);border:1px solid #e4e7ec;border-radius:18px;padding:22px;box-shadow:0 8px 30px rgba(16,24,40,.05);margin-bottom:20px}
 .login-panel{display:flex;justify-content:space-between;gap:24px;align-items:center}.login-form{min-width:420px}
@@ -137,17 +146,17 @@ function badge(value,on="Enabled",off="Disabled"){
 }
 function fmtTime(v){try{return new Date(v).toLocaleString()}catch{return "—"}}
 
-async function api(path){
-  const res=await fetch(path,{headers:{Authorization:"Bearer "+state.token}});
+async function api(path,method="GET",body){
+  const res=await fetch(path,{method,headers:{Authorization:"Bearer "+state.token,...(body?{"Content-Type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
   if(res.status===401) throw new Error("Unauthorized");
-  if(!res.ok) throw new Error("Request failed");
+  if(!res.ok){const failure=await res.json();throw new Error(failure.error?.message||"Request failed");}
   return res.json();
 }
 
 function renderProject(p){
   return '<article class="project-card">'
     +'<div class="project-top">'
-    +'<span class="project-name">'+esc(p.id)+'</span>'
+    +'<span class="project-name">'+esc(p.name)+' ('+esc(p.id)+')</span>'
     +'<span class="health"><span class="dot '+(p.database.ok?'ok':'bad')+'"></span>'
     +(p.database.ok?'Connected':'Unavailable')+' · '+esc(p.database.latencyMs)+'ms</span>'
     +'</div>'
@@ -172,6 +181,35 @@ function renderActivity(a){
     +'</tr>';
 }
 
+let projectOptions=[];
+function renderUsers(users){
+  $("users").innerHTML=users.map(u=>'<div class="user-row" data-user="'+esc(u.id)+'"><strong>'+esc(u.id)+'</strong>'
+    +projectOptions.map(p=>'<label class="grant-row"><input type="checkbox" data-project="'+esc(p.id)+'" '+(u.projects.includes(p.id)?'checked':'')+' /> '+esc(p.name||p.id)+' ('+esc(p.id)+') · Read</label>'
+      +'<label class="grant-row"><input type="checkbox" data-write="'+esc(p.id)+'" '+(u.writeProjects.includes(p.id)?'checked':'')+' '+(!p.writeConfigured||!p.writeEnabled?'disabled':'')+' /> Write '+(!p.writeConfigured||!p.writeEnabled?'(server disabled)':'')+'</label>').join('')
+    +'<div class="user-actions"><button class="button small" data-action="save">Save grants</button><button class="button ghost small" data-action="rotate">Rotate token</button><button class="button ghost small" data-action="delete">Remove</button></div></div>').join('');
+}
+function showMessage(message,token){
+  const box=$("accessMessage");box.replaceChildren();
+  const p=document.createElement("p");p.textContent=message;box.append(p);
+  if(token){const secret=document.createElement("div");secret.className="token-once";secret.textContent=token;box.append(secret);}
+}
+async function change(path,method,body){
+  try{const data=await api(path,method,body);showMessage("Saved. Existing MCP sessions were closed; reconnect in VS Code.",data.result?.token);await load();}
+  catch(err){showMessage(err.message);}
+}
+$("userForm").addEventListener("submit",e=>{e.preventDefault();const id=$("userId").value.trim();change("/admin/users","POST",{id,projects:projectOptions.map(p=>p.id),writeProjects:[]});$("userId").value="";});
+$("users").addEventListener("click",e=>{
+  const action=e.target.closest("[data-action]")?.dataset.action;
+  const row=e.target.closest("[data-user]");if(!action||!row)return;
+  const id=row.dataset.user,path="/admin/users/"+encodeURIComponent(id);
+  if(action==="delete"&&!confirm("Remove user "+id+" and revoke the token?"))return;
+  if(action==="save"){
+    const projects=[...row.querySelectorAll("[data-project]:checked")].map(x=>x.dataset.project);
+    const writeProjects=[...row.querySelectorAll("[data-write]:checked")].map(x=>x.dataset.write);
+    change(path,"PUT",{projects,writeProjects});
+  }else change(path+(action==="rotate"?"/rotate":""),action==="rotate"?"POST":"DELETE");
+});
+
 async function load(){
   loginError.classList.add("hidden");
   try{
@@ -181,7 +219,9 @@ async function load(){
     $("gatewayStatus").textContent=data.ok?"Online":"Attention";
     $("gatewayMeta").textContent="v"+data.version+" · "+data.uptime;
     $("projectCount").textContent=data.projects.length;
+    projectOptions=data.projects;
     $("projects").innerHTML=data.projects.map(renderProject).join("");
+    renderUsers(data.users||[]);
 
     const rows=data.activity||[];
     $("activity").innerHTML=rows.length

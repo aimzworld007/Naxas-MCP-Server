@@ -55,7 +55,7 @@ export function registerTools(server: McpServer, principal: Principal) {
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
   }, async ({ project, sql, params, reason }) => {
     const policy = getProjectForPrincipal(project, principal);
-    assertWriteAccess(principal);
+    assertWriteAccess(principal, project);
     assertWriteQuery(sql);
     const operation = getWriteOperation(sql);
     if (!policy.writeUrl) throw new Error("Write preview is unavailable because this project has no write connection");
@@ -85,7 +85,7 @@ export function registerTools(server: McpServer, principal: Principal) {
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false }
   }, async ({ project, sql, params, reason }) => {
     const policy = getProjectForPrincipal(project, principal);
-    assertWriteAccess(principal);
+    assertWriteAccess(principal, project);
     assertWriteQuery(sql);
     const operation = getWriteOperation(sql);
 
