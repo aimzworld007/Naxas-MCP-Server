@@ -20,18 +20,20 @@ Enable HTTPS through Coolify/Traefik.
 
 Copy the variables from `.env.example` into Coolify secrets/environment settings. Do not commit the real `.env` file.
 
-For a single read-only project:
+For one project:
 
-`PROJECTS_JSON={"myapp":{"readUrl":"postgresql://reader:SECRET@postgres:5432/myapp"}}`
+`PROJECTS_JSON={"myapp":{"url":"postgresql://gateway_user:SECRET@postgres:5432/myapp"}}`
 
-For read + approval-gated writes:
+For multiple databases in the same gateway container:
 
-`PROJECTS_JSON={"myapp":{"readUrl":"postgresql://reader:SECRET@postgres:5432/myapp","writeUrl":"postgresql://writer:SECRET@postgres:5432/myapp","writeEnabled":true,"allowDelete":false,"maxWriteRows":50}}`
+`PROJECTS_JSON={"myapp":{"url":"postgresql://gateway_user:SECRET@postgres:5432/myapp"},"other":{"url":"postgresql://other_user:SECRET@other-db:5432/other"}}`
+
+Mount a persistent volume at `/app/data` and set `MCP_ACCESS_FILE=/app/data/access.json`. Then use the owner gateway panel to set project name, Read/Write/DELETE policy, row limit, and user grants. Database URLs still require an environment update and redeploy. With one URL, its PostgreSQL role needs the privileges for any writes you enable; existing separate `readUrl`/`writeUrl` configurations remain valid.
 
 Recommended production defaults:
 
-- `writeEnabled=false` until write access is intentionally enabled.
-- `allowDelete=false` unless deletion is explicitly required.
+- Leave project Write off in the panel until you intend to enable it.
+- Leave DELETE off unless deletion is explicitly required.
 - Keep `maxWriteRows` conservative, for example 25–100.
 - Keep `MCP_RATE_LIMIT_MAX` conservative and increase only when real usage requires it.
 - Use a random bearer token of at least 32 characters.
