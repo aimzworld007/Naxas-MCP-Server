@@ -10,7 +10,7 @@ import dotenv from "dotenv";
 import pg from "pg";
 
 const { Pool } = pg;
-const VERSION = "0.5.0";
+const VERSION = "0.5.1";
 
 function token() {
   return randomBytes(32).toString("base64url");
