@@ -12,20 +12,12 @@ Example:
 
 ```json
 {
-  "naxas": {
-    "readUrl": "postgresql://reader:***@postgres:5432/naxas",
-    "writeUrl": "postgresql://writer:***@postgres:5432/naxas",
-    "writeEnabled": true,
-    "allowDelete": false,
-    "maxWriteRows": 50
-  },
-  "another_app": {
-    "readUrl": "postgresql://reader:***@postgres:5432/another_app"
-  }
+  "naxas": { "url": "postgresql://gateway_user:***@postgres:5432/naxas" },
+  "another_app": { "url": "postgresql://gateway_user:***@postgres:5432/another_app" }
 }
 ```
 
-Omit `writeUrl` to make a project permanently read-only. Even when `writeUrl` exists, writes stay disabled unless `writeEnabled: true` is set. DELETE requires `allowDelete: true`. `maxWriteRows` caps the number of rows a single committed write may affect.
+New projects start with write policy off. Use the owner dashboard to set project name, Read/Write/DELETE switches, maximum write rows, and per-user grants. Policy changes persist in `MCP_ACCESS_FILE`; database connections still come only from server environment. With one `url`, the database role must allow writes for Write to succeed. Existing `readUrl` / `writeUrl` settings remain supported.
 
 ## Tools
 
