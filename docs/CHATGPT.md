@@ -1,5 +1,7 @@
 # Connect to ChatGPT
 
+> Historical/optional integration reference. The active Naxas MCP scope uses the VS Code Codex extension with custom Streamable HTTP MCP; no ChatGPT custom app is required. See [project scope](PROJECT_SCOPE.md) and [VS Code setup](VSCODE_CODEX.md). This page does not describe the current release path.
+
 The server exposes a remote MCP endpoint at:
 
 `https://YOUR_DOMAIN/mcp`
