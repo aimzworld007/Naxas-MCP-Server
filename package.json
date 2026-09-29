@@ -1,6 +1,6 @@
 {
   "name": "naxas-mcp",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Secure self-hosted PostgreSQL MCP gateway with read-only defaults, controlled writes, audit logging, and Docker/Coolify support.",
   "type": "module",
   "license": "MIT",
