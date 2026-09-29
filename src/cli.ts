@@ -65,12 +65,13 @@ async function init() {
 
     const generatedToken = token();
     const readUrl = `postgresql://${encodeURIComponent(user)}:REPLACE_WITH_URL_ENCODED_PASSWORD@${host}:${port}/${database}`;
-    const projects = JSON.stringify({ [projectRaw]: { readUrl } });
+    const projects = JSON.stringify({ [projectRaw]: { url: readUrl } });
 
     const body = [
       "PORT=3000",
       `MCP_BEARER_TOKEN=${generatedToken}`,
       "MCP_USERS_JSON={}",
+      "MCP_ACCESS_FILE=./data/access.json",
       `MCP_ALLOWED_HOSTS=${allowedHost},localhost,127.0.0.1`,
       `PROJECTS_JSON=${projects}`,
       "DB_STATEMENT_TIMEOUT_MS=30000",
@@ -86,7 +87,7 @@ async function init() {
 
     console.log("\n✓ Created .env in read-only mode");
     console.log("✓ Generated a strong MCP bearer token");
-    console.log("✓ No writeUrl configured");
+    console.log("✓ Project write policy starts disabled in the gateway panel");
     console.log("\nNext:");
     console.log("1. Edit .env and replace REPLACE_WITH_URL_ENCODED_PASSWORD");
     console.log("2. Run: naxas-mcp doctor");
@@ -122,7 +123,7 @@ async function doctor() {
   const bearer = parsed.MCP_BEARER_TOKEN || "";
   checks.push({ label: "Bearer token >= 32 chars", ok: bearer.length >= 32 });
 
-  let projects: Record<string, { readUrl: string; writeUrl?: string; writeEnabled?: boolean }>;
+  let projects: Record<string, { url?: string; readUrl?: string; writeUrl?: string; writeEnabled?: boolean }>;
   try {
     projects = JSON.parse(parsed.PROJECTS_JSON || "{}");
     checks.push({ label: "PROJECTS_JSON valid", ok: Object.keys(projects).length > 0 });
@@ -145,8 +146,9 @@ async function doctor() {
   }
 
   for (const [id, project] of Object.entries(projects)) {
-    const placeholder = project.readUrl?.includes("REPLACE_WITH_URL_ENCODED_PASSWORD");
-    checks.push({ label: `${id}: read URL configured`, ok: Boolean(project.readUrl) && !placeholder });
+    const readUrl = project.readUrl ?? project.url;
+    const placeholder = readUrl?.includes("REPLACE_WITH_URL_ENCODED_PASSWORD");
+    checks.push({ label: `${id}: read URL configured`, ok: Boolean(readUrl) && !placeholder });
 
     if (project.writeUrl || project.writeEnabled) {
       checks.push({
@@ -156,9 +158,9 @@ async function doctor() {
       });
     }
 
-    if (project.readUrl && !placeholder) {
+    if (readUrl && !placeholder) {
       const pool = new Pool({
-        connectionString: project.readUrl,
+        connectionString: readUrl,
         max: 1,
         connectionTimeoutMillis: 5000,
         statement_timeout: 5000
