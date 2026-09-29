@@ -21,48 +21,34 @@ naxas-mcp init
 
 For local PostgreSQL, Docker PostgreSQL, and VPS-private PostgreSQL setup details, see [LOCALHOST.md](LOCALHOST.md).
 
-## Maintainer release
+## Automatic release from GitHub
 
-Prerequisites:
+The workflow [`npm-publish.yml`](../.github/workflows/npm-publish.yml) publishes the package when a **non-prerelease GitHub Release** is published. Ordinary commits and pull requests do not publish. It uses npm Trusted Publishing (OIDC), so no long-lived `NPM_TOKEN` GitHub secret is needed.
 
-- npm account with permission to publish the package name
-- npm CLI authenticated with `npm login`
-- clean working tree
-- version updated in `package.json`
+### One-time npm account setup
 
-Validate:
+On [the npm package page](https://www.npmjs.com/package/naxas-mcp), open **Settings → Trusted publishing → Add trusted publisher → GitHub Actions**. Enter these exact values:
 
-```bash
-npm install
-npm run check
-npm pack --dry-run
-```
+| npm field | Value |
+| --- | --- |
+| Organization or user | `aimzworld007` |
+| Repository | `Naxas-MCP-Server` |
+| Workflow filename | `npm-publish.yml` (filename only) |
+| Environment name | Leave empty |
+| Allowed actions | Enable direct `npm publish` |
 
-The package must contain `dist/cli.js` and `dist/server.js`.
+Only a package owner can link the npm package to the GitHub workflow. The workflow uses a GitHub-hosted runner, Node 24, npm 11, and `id-token: write`. See [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/).
 
-Publish:
+### Each release
 
-```bash
-npm publish
-```
+1. Update `package.json`, the CLI version in `src/cli.ts`, and the MCP/server versions in `src/server.ts` to the **same new version**. Update `package-lock.json` with `npm install --package-lock-only`. Commit and push the changes to `main`.
+2. Verify `npm ci`, `npm run check`, and `npm pack --dry-run`. The package must include `dist/cli.js`, `dist/server.js`, and intended docs.
+3. In GitHub, create a Release from the verified commit with tag `v<version>` (for example, `v0.5.5` for package version `0.5.5`) and **Publish release**.
+4. Check [GitHub Actions](https://github.com/aimzworld007/Naxas-MCP-Server/actions) for the **Publish to npm** run, then verify `npm view naxas-mcp version`.
 
-The package is configured with public access.
+The workflow stops before publishing if the release tag differs from `package.json`. npm cannot publish the same package version twice. Version `0.5.4` was already published manually; the first automated release must use a newer version. Do not create a new `v0.5.4` release to test this workflow.
 
-## Package-name availability
-
-Repository search did not show an existing npm package named `naxas-mcp`, but npm registry availability must be confirmed immediately before the first publish because package names can be claimed at any time.
-
-If the unscoped name is unavailable, use a scoped package such as:
-
-```text
-@aimzworld/naxas-mcp
-```
-
-The executable command can still remain:
-
-```text
-naxas-mcp
-```
+Manual `npm publish --access public` remains available to an authenticated package maintainer when needed.
 
 ## Release safety
 
