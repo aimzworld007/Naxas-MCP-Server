@@ -28,7 +28,7 @@ For multiple databases in the same gateway container:
 
 `PROJECTS_JSON={"myapp":{"url":"postgresql://gateway_user:SECRET@postgres:5432/myapp"},"other":{"url":"postgresql://other_user:SECRET@other-db:5432/other"}}`
 
-Mount a persistent volume at `/app/data` and set `MCP_ACCESS_FILE=/app/data/access.json`. Then use the owner gateway panel to set project name, Read/Write/DELETE policy, row limit, and user grants. Database URLs still require an environment update and redeploy. With one URL, its PostgreSQL role needs the privileges for any writes you enable; existing separate `readUrl`/`writeUrl` configurations remain valid.
+Mount a persistent volume at `/app/data` and set `MCP_ACCESS_FILE=/app/data/access.json`. Then use the owner gateway panel's project mode dropdown (`Disabled`, `Read only`, `Read + Write`) and Save button. Set each user's per-project mode with its own dropdown and Save grants. DELETE and row limit are separate controls. Database URLs still require an environment update and redeploy. With one URL, its PostgreSQL role needs the privileges for any writes you enable; existing separate `readUrl`/`writeUrl` configurations remain valid.
 
 Recommended production defaults:
 
