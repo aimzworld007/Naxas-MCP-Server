@@ -24,7 +24,7 @@ export const adminHtml = `<!doctype html>
     <section id="loginPanel" class="panel login-panel">
       <div>
         <h2>Admin access</h2>
-        <p>Enter the MCP bearer token to view operational status. The token is never displayed by the server.</p>
+        <p>Enter the owner bearer token to manage project and user access. The token is never displayed by the server.</p>
       </div>
       <form id="loginForm" class="login-form">
         <input id="token" type="password" autocomplete="current-password" placeholder="Bearer token" required />
@@ -58,22 +58,22 @@ export const adminHtml = `<!doctype html>
       </div>
 
       <section class="panel">
-        <div class="section-head"><div><p class="eyebrow">ACCESS</p><h2>Users and project grants</h2></div></div>
-        <p class="muted">One token per user. Select projects and enable write only where a writer connection is configured. Tokens appear once; copy them privately.</p>
-        <div id="accessMessage" role="status"></div>
-        <form id="userForm" class="login-form"><input id="userId" placeholder="New user ID" required pattern="[a-z0-9][a-z0-9_-]{0,63}" /><button class="button" type="submit">Create user</button></form>
-        <div id="users"></div>
-      </section>
-
-      <section class="panel">
         <div class="section-head">
           <div>
             <p class="eyebrow">PROJECTS</p>
-            <h2>Connection & policy status</h2>
+            <h2>Project access modes</h2>
           </div>
           <button id="logout" class="button ghost small">Lock dashboard</button>
         </div>
         <div id="projects" class="project-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head"><div><p class="eyebrow">USERS</p><h2>User project access</h2></div></div>
+        <p class="muted">One token per user. Choose an access mode for each project and save. A new token is displayed once.</p>
+        <div id="accessMessage" role="status"></div>
+        <form id="userForm" class="login-form"><input id="userId" placeholder="New user ID" required pattern="[a-z0-9][a-z0-9_-]{0,63}" /><button class="button" type="submit">Create user</button></form>
+        <div id="users"></div>
       </section>
 
       <section class="panel">
@@ -114,7 +114,7 @@ button,input,select{font:inherit}.shell{max-width:1180px;margin:0 auto;padding:3
 h1,h2,p{margin-top:0}h1{font-size:34px;letter-spacing:-.03em;margin-bottom:8px}h2{font-size:20px;margin-bottom:6px}
 .sub,.muted{color:#667085}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.18em;color:#475467;margin-bottom:8px}
 .top-actions,.login-form{display:flex;gap:10px}.button{border:0;border-radius:12px;background:#111827;color:white;padding:11px 16px;font-weight:700;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,.08)}
-.user-row{border:1px solid #e4e7ec;border-radius:12px;padding:14px;margin-top:12px}.grant-row{display:flex;gap:10px;align-items:center;margin:8px 0}.grant-row input{width:auto}.user-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.token-once{overflow-wrap:anywhere;padding:12px;background:#ecfdf3;border-radius:10px}
+.user-row{border:1px solid #e4e7ec;border-radius:12px;padding:14px;margin-top:12px}.grant-row{display:flex;gap:10px;align-items:center;margin:8px 0}.grant-row input[type=checkbox]{width:auto}.grant-row select,.grant-row input[type=number],.grant-row input[type=text]{max-width:260px;margin-left:auto}.user-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.token-once{overflow-wrap:anywhere;padding:12px;background:#ecfdf3;border-radius:10px}
 .button:hover{opacity:.92}.button.ghost{background:white;color:#344054;border:1px solid #d0d5dd;box-shadow:none}.button.small{padding:9px 12px;font-size:13px}
 .panel{background:rgba(255,255,255,.92);border:1px solid #e4e7ec;border-radius:18px;padding:22px;box-shadow:0 8px 30px rgba(16,24,40,.05);margin-bottom:20px}
 .login-panel{display:flex;justify-content:space-between;gap:24px;align-items:center}.login-form{min-width:420px}
@@ -123,7 +123,7 @@ input,select{width:100%;border:1px solid #d0d5dd;background:#fff;border-radius:1
 .stat-label{display:block;color:#667085;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}.stat strong{display:block;font-size:24px;margin:9px 0 5px}.stat small{color:#667085}
 .section-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}.section-head h2{margin-bottom:0}
 .project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.project-card{border:1px solid #e4e7ec;border-radius:16px;padding:18px;background:#fcfcfd}
-.project-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.project-name{font-size:18px;font-weight:800}.health{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700}
+.project-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.project-name{font-size:18px;font-weight:800}.health{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700}.access-controls{background:#eef4ff;border:1px solid #c7d7fe;border-radius:12px;padding:14px;margin:12px 0 16px;display:grid;gap:8px}.access-controls .grant-row{font-weight:700}.access-controls .button{justify-self:start}
 .dot{width:8px;height:8px;border-radius:50%;background:#98a2b3}.dot.ok{background:#12b76a}.dot.bad{background:#f04438}
 .policy{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.policy-item{background:#fff;border:1px solid #eaecf0;border-radius:12px;padding:12px}.policy-item span{display:block;font-size:12px;color:#667085;margin-bottom:5px}.policy-item strong{font-size:14px}
 .badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800}.badge.on{background:#ecfdf3;color:#027a48}.badge.off{background:#f2f4f7;color:#475467}.badge.warn{background:#fff6ed;color:#b54708}
@@ -131,6 +131,7 @@ input,select{width:100%;border:1px solid #d0d5dd;background:#fff;border-radius:1
 .hidden{display:none!important}.error{color:#b42318;margin:10px 0 0;font-size:13px}.empty{color:#667085;padding:16px 0}
 @media(max-width:850px){.topbar,.login-panel{flex-direction:column}.top-actions,.login-form{width:100%;min-width:0}.stats{grid-template-columns:repeat(2,1fr)}.project-grid{grid-template-columns:1fr}}
 @media(max-width:560px){.shell{padding:22px 14px 40px}.stats{grid-template-columns:1fr}.top-actions,.login-form{flex-direction:column}.panel{padding:16px}h1{font-size:28px}}
+@media(max-width:560px){.grant-row{flex-wrap:wrap}.grant-row select,.grant-row input[type=number],.grant-row input[type=text]{max-width:none;margin-left:0;width:100%}.project-top{align-items:flex-start;flex-direction:column;gap:8px}}
 `;
 
 export const adminJs = `
@@ -164,19 +165,19 @@ function renderProject(p){
     +'<span class="health"><span class="dot '+(p.database.ok?'ok':'bad')+'"></span>'
     +(p.database.ok?'Connected':'Unavailable')+' · '+esc(p.database.latencyMs)+'ms</span>'
     +'</div>'
+    +'<div class="access-controls" data-policy="'+esc(p.id)+'">'
+    +'<label class="grant-row">Access mode <select data-field="mode" aria-label="Access mode for '+esc(p.id)+'">'+modeOptions(p.writeEnabled?'write':p.readEnabled?'read':'off',p.writeConfigured)+'</select></label>'
+    +'<button class="button small" data-action="save-policy">Save access mode</button>'
+    +'<div class="advanced-controls"><label class="grant-row">Display name <input type="text" data-field="name" maxlength="100" value="'+esc(p.name)+'" /></label>'
+    +'<label class="grant-row"><input type="checkbox" data-field="allowDelete" '+(p.allowDelete?'checked':'')+' /> Allow DELETE</label>'
+    +'<label class="grant-row">Max write rows <input type="number" min="1" max="10000" data-field="maxWriteRows" value="'+esc(p.maxWriteRows)+'" /></label></div></div>'
     +'<div class="policy">'
     +'<div class="policy-item"><span>Read access</span><strong>'+badge(p.readEnabled)+'</strong></div>'
     +'<div class="policy-item"><span>Write connection</span><strong>'+badge(p.writeConfigured,"Configured","Not configured")+'</strong></div>'
     +'<div class="policy-item"><span>Write execution</span><strong>'+badge(p.writeEnabled)+'</strong></div>'
     +'<div class="policy-item"><span>DELETE</span><strong>'+(p.allowDelete?'<span class="badge warn">Enabled</span>':'<span class="badge off">Blocked</span>')+'</strong></div>'
     +'<div class="policy-item"><span>Max write rows</span><strong>'+esc(p.maxWriteRows)+'</strong></div>'
-    +'<div class="policy-item"><span>Mode</span><strong>'+(p.writeEnabled?'Read + controlled write':'Read only')+'</strong></div>'
-    +'</div><div class="user-actions" data-policy="'+esc(p.id)+'">'
-    +'<label class="grant-row">Name <input type="text" data-field="name" maxlength="100" value="'+esc(p.name)+'" /></label>'
-    +'<label class="grant-row">Access mode <select data-field="mode">'+modeOptions(p.writeEnabled?'write':p.readEnabled?'read':'off',p.writeConfigured)+'</select></label>'
-    +'<label class="grant-row"><input type="checkbox" data-field="allowDelete" '+(p.allowDelete?'checked':'')+' /> Allow DELETE</label>'
-    +'<label class="grant-row">Max write rows <input type="number" min="1" max="10000" data-field="maxWriteRows" value="'+esc(p.maxWriteRows)+'" /></label>'
-    +'<button class="button small" data-action="save-policy">Save policy</button></div></article>';
+    +'</div></article>';
 }
 
 function renderActivity(a){
@@ -192,10 +193,10 @@ function renderActivity(a){
 
 let projectOptions=[];
 function renderUsers(users){
-  $("users").innerHTML=users.map(u=>'<div class="user-row" data-user="'+esc(u.id)+'"><strong>'+esc(u.id)+'</strong>'
+  $("users").innerHTML=users.length?users.map(u=>'<div class="user-row" data-user="'+esc(u.id)+'"><strong>'+esc(u.id)+'</strong>'
     +projectOptions.map(p=>'<label class="grant-row">'+esc(p.name||p.id)+' ('+esc(p.id)+') <select data-grant="'+esc(p.id)+'">'
       +modeOptions(u.writeProjects.includes(p.id)?'write':u.projects.includes(p.id)?'read':'off',p.writeConfigured)+'</select></label>').join('')
-    +'<div class="user-actions"><button class="button small" data-action="save">Save grants</button><button class="button ghost small" data-action="rotate">Rotate token</button><button class="button ghost small" data-action="delete">Remove</button></div></div>').join('');
+    +'<div class="user-actions"><button class="button small" data-action="save">Save grants</button><button class="button ghost small" data-action="rotate">Rotate token</button><button class="button ghost small" data-action="delete">Remove</button></div></div>').join(''):'<p class="empty">No developer users yet. Create one above; project access can be set in this section.</p>';
 }
 function showMessage(message,token){
   const box=$("accessMessage");box.replaceChildren();
