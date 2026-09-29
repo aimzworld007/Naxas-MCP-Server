@@ -1,7 +1,7 @@
 import express from "express";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
-import { randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
@@ -12,12 +12,7 @@ import { listProjectIds, listProjectSummaries } from "./projects.js";
 import { checkProjectReadHealth } from "./db.js";
 import { getRecentAuditEvents } from "./audit.js";
 import { adminCss, adminHtml, adminJs } from "./admin-ui.js";
-
-function safeEqual(a: string, b: string) {
-  const aa = Buffer.from(a);
-  const bb = Buffer.from(b);
-  return aa.length === bb.length && timingSafeEqual(aa, bb);
-}
+import { createAuthenticator, samePrincipal, type Principal } from "./security/users.js";
 
 function errorBody(code: string, message: string, requestId: string) {
   return { error: { code, message, requestId } };
@@ -28,10 +23,7 @@ function getBearerToken(req: express.Request) {
   return auth.startsWith("Bearer ") ? auth.slice(7) : "";
 }
 
-function isAuthorized(req: express.Request) {
-  const token = getBearerToken(req);
-  return Boolean(token) && safeEqual(token, env.MCP_BEARER_TOKEN);
-}
+const authenticate = createAuthenticator(env.MCP_BEARER_TOKEN, listProjectIds(), env.MCP_USERS_JSON);
 
 function formatUptime(seconds: number) {
   const total = Math.max(0, Math.floor(seconds));
@@ -94,7 +86,8 @@ app.get("/ready", (_req, res) => {
 
 app.get("/admin/status", mcpLimiter, async (req, res) => {
   const requestId = String(res.getHeader("x-request-id") || "");
-  if (!isAuthorized(req)) {
+  const principal = authenticate(getBearerToken(req));
+  if (principal?.kind !== "owner") {
     return res.status(401).json(errorBody("UNAUTHORIZED", "Unauthorized", requestId));
   }
 
@@ -115,6 +108,7 @@ app.get("/admin/status", mcpLimiter, async (req, res) => {
   const activity = getRecentAuditEvents(20).map(event => ({
     ts: event.ts,
     requestId: event.requestId,
+    actor: event.actor,
     project: event.project,
     tool: event.tool,
     status: event.status,
@@ -126,7 +120,7 @@ app.get("/admin/status", mcpLimiter, async (req, res) => {
   res.setHeader("cache-control", "no-store");
   res.json({
     ok: projects.every(project => project.database.ok),
-    version: "0.5.4",
+    version: "0.6.0",
     uptime: formatUptime(process.uptime()),
     mcpEndpoint: "/mcp",
     projects,
@@ -137,12 +131,14 @@ app.get("/admin/status", mcpLimiter, async (req, res) => {
 const mcpSessions = new Map<string, {
   transport: StreamableHTTPServerTransport;
   server: McpServer;
+  principal: Principal;
 }>();
 
 async function handleMcpRequest(req: express.Request, res: express.Response) {
   const requestId = String(res.getHeader("x-request-id") || "");
 
-  if (!isAuthorized(req)) {
+  const principal = authenticate(getBearerToken(req));
+  if (!principal) {
     return res.status(401).json(errorBody("UNAUTHORIZED", "Unauthorized", requestId));
   }
 
@@ -150,6 +146,13 @@ async function handleMcpRequest(req: express.Request, res: express.Response) {
   const existing = sessionId ? mcpSessions.get(sessionId) : undefined;
 
   if (existing) {
+    if (!samePrincipal(principal, existing.principal)) {
+      return res.status(404).json({
+        jsonrpc: "2.0",
+        error: { code: -32001, message: "Session not found" },
+        id: null
+      });
+    }
     try {
       await existing.transport.handleRequest(req, res, req.body);
     } catch (error) {
@@ -183,14 +186,14 @@ async function handleMcpRequest(req: express.Request, res: express.Response) {
     });
   }
 
-  const server = new McpServer({ name: "naxas-mcp-server", version: "0.5.4" });
-  registerTools(server);
+  const server = new McpServer({ name: "naxas-mcp-server", version: "0.6.0" });
+  registerTools(server, principal);
 
   let transport: StreamableHTTPServerTransport;
   transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
     onsessioninitialized: initializedSessionId => {
-      mcpSessions.set(initializedSessionId, { transport, server });
+      mcpSessions.set(initializedSessionId, { transport, server, principal });
     }
   });
 
