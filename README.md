@@ -2,7 +2,9 @@
 
 Open-source, self-hostable PostgreSQL MCP gateway for VS Code Codex and other MCP clients.
 
-It is designed around one rule: **read by default; write only through a separately privileged database role and an approval-capable MCP client.**
+It is designed around one rule: **read by default; controlled writes only when the owner enables project and user access and the database role permits them.**
+
+The current scope is [one gateway, multiple databases, multiple users, VS Code Codex, and owner-managed project policy](docs/PROJECT_SCOPE.md). A ChatGPT custom app is outside the planned workflow.
 
 ## Why this exists
 
@@ -17,7 +19,7 @@ Example:
 }
 ```
 
-New projects start with write policy off. Use the owner dashboard to set project name, Read/Write/DELETE switches, maximum write rows, and per-user grants. Policy changes persist in `MCP_ACCESS_FILE`; database connections still come only from server environment. With one `url`, the database role must allow writes for Write to succeed. Existing `readUrl` / `writeUrl` settings remain supported.
+New projects start in Read only mode. Use the owner dashboard's project and user mode dropdowns (`Disabled`, `Read only`, `Read + Write`) and Save buttons; DELETE and maximum write rows are separate controls. Policy changes persist in `MCP_ACCESS_FILE`; database connections still come only from server environment. With one `url`, the database role must allow writes for Write to succeed. Existing `readUrl` / `writeUrl` settings remain supported.
 
 ## Tools
 
@@ -39,7 +41,7 @@ Security is layered:
 1. MCP client permission/confirmation.
 2. Server-side project allowlist.
 3. SQL policy enforcement.
-4. Separate PostgreSQL read/write roles.
+4. PostgreSQL role privileges; optional separate read/write roles.
 5. PostgreSQL privileges remain the final authority.
 6. Query and lock timeouts.
 7. Structured audit events with request IDs.
@@ -50,7 +52,7 @@ Do not grant the writer role superuser, owner, schema-management, or role-manage
 
 ## Install with npm
 
-After the package is published to npm, users can run:
+Users can run:
 
 ```bash
 npx naxas-mcp init
@@ -79,6 +81,7 @@ CLI commands:
 | `naxas-mcp init` | Create a safe read-only `.env` template and strong MCP token |
 | `naxas-mcp doctor` | Validate config and test PostgreSQL read connectivity |
 | `naxas-mcp generate-token` | Generate a secure bearer token |
+| `naxas-mcp generate-user-token` | Generate a user token and SHA-256 hash for legacy env setup |
 | `naxas-mcp start` | Start the MCP gateway |
 | `naxas-mcp help` | Show CLI help |
 
@@ -113,7 +116,7 @@ Remote MCP endpoint:
 POST https://your-domain.example/mcp
 ```
 
-See [Localhost setup](docs/LOCALHOST.md), [Coolify deployment](docs/COOLIFY.md), [VS Code Codex setup](docs/VSCODE_CODEX.md), [multi-user VS Code access](docs/MULTI_USER_VSCODE.md), [ChatGPT connection](docs/CHATGPT.md), [Admin dashboard](docs/ADMIN_DASHBOARD.md), and the [Naxas live read-only rollout](docs/NAXAS_LIVE_ROLLOUT.md).
+See [project scope](docs/PROJECT_SCOPE.md), [Coolify deployment](docs/COOLIFY.md), [admin dashboard](docs/ADMIN_DASHBOARD.md), [VS Code Codex setup](docs/VSCODE_CODEX.md), [multi-user access](docs/MULTI_USER_VSCODE.md), [localhost setup](docs/LOCALHOST.md), and [npm release](docs/NPM_CLI.md). [Initial Naxas rollout](docs/NAXAS_LIVE_ROLLOUT.md) and [ChatGPT connection](docs/CHATGPT.md) remain as historical/optional references.
 
 ## Development checks
 
@@ -122,7 +125,7 @@ npm install
 npm run check
 ```
 
-This runs strict TypeScript checking, SQL-policy tests, and a production build.
+This runs strict TypeScript checking, tests, a production build, and CLI help smoke test.
 
 ## PostgreSQL roles
 
