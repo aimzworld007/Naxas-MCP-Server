@@ -8,9 +8,10 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import dotenv from "dotenv";
 import pg from "pg";
+import { createAuthenticator, tokenSha256 } from "./security/users.js";
 
 const { Pool } = pg;
-const VERSION = "0.5.4";
+const VERSION = "0.6.0";
 
 function token() {
   return randomBytes(32).toString("base64url");
@@ -27,6 +28,7 @@ Naxas MCP CLI v${VERSION}
 Usage:
   naxas-mcp init             Create a safe read-only .env template
   naxas-mcp generate-token   Generate a strong MCP bearer token
+  naxas-mcp generate-user-token   Generate a user token and its SHA-256 hash
   naxas-mcp doctor           Validate config and test read-only DB connectivity
   naxas-mcp start            Start the MCP gateway
   naxas-mcp help             Show this help
@@ -68,6 +70,7 @@ async function init() {
     const body = [
       "PORT=3000",
       `MCP_BEARER_TOKEN=${generatedToken}`,
+      "MCP_USERS_JSON={}",
       `MCP_ALLOWED_HOSTS=${allowedHost},localhost,127.0.0.1`,
       `PROJECTS_JSON=${projects}`,
       "DB_STATEMENT_TIMEOUT_MS=30000",
@@ -128,6 +131,17 @@ async function doctor() {
     printChecks(checks);
     process.exitCode = 1;
     return;
+  }
+
+  try {
+    createAuthenticator(bearer, Object.keys(projects), parsed.MCP_USERS_JSON || "{}");
+    checks.push({ label: "MCP_USERS_JSON valid", ok: true });
+  } catch (error) {
+    checks.push({
+      label: "MCP_USERS_JSON valid",
+      ok: false,
+      detail: error instanceof Error ? error.message : "invalid user configuration"
+    });
   }
 
   for (const [id, project] of Object.entries(projects)) {
@@ -206,6 +220,12 @@ async function main() {
     case "generate-token":
       console.log(token());
       break;
+    case "generate-user-token": {
+      const generated = token();
+      console.log(`User token (share privately once): ${generated}`);
+      console.log(`tokenSha256 (server config): ${tokenSha256(generated)}`);
+      break;
+    }
     case "doctor":
       await doctor();
       break;
