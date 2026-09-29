@@ -4,7 +4,7 @@ import { z } from "zod";
 const idSchema = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/);
 const userSchema = z.strictObject({
   tokenSha256: z.string().regex(/^[a-fA-F0-9]{64}$/),
-  projects: z.array(z.union([idSchema, z.literal("*")])).min(1),
+  projects: z.array(z.union([idSchema, z.literal("*")])),
   writeEnabled: z.boolean().default(false),
   writeProjects: z.array(idSchema).optional()
 });
