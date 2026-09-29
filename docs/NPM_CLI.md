@@ -21,9 +21,23 @@ naxas-mcp init
 
 For local PostgreSQL, Docker PostgreSQL, and VPS-private PostgreSQL setup details, see [LOCALHOST.md](LOCALHOST.md).
 
-## Automatic release from GitHub
+## Windows one-click release
 
-The workflow [`npm-publish.yml`](../.github/workflows/npm-publish.yml) publishes the package when a **non-prerelease GitHub Release** is published. Ordinary commits and pull requests do not publish. It uses npm Trusted Publishing (OIDC), so no long-lived `NPM_TOKEN` GitHub secret is needed.
+When GitHub Actions cannot run, use [`publish-npm.bat`](../publish-npm.bat) from a clean Windows clone of this repository. The script pulls `main` with `--ff-only`, checks that the version is not already on npm, runs `npm ci` and `npm run check`, then publishes using your local npm login. It does **not** contain or request an npm token. npm may prompt for a second factor during publish.
+
+First, commit a new version to GitHub in `package.json`, `package-lock.json`, `src/cli.ts`, and `src/server.ts`. Each npm release needs a unique version. Then double-click `publish-npm.bat` in the Windows clone, or run it from PowerShell:
+
+```powershell
+.\publish-npm.bat
+```
+
+If the script reports that login is needed, run `npm login --auth-type=web` in PowerShell, then start the script again. It stops on local changes, wrong branch/repository, pull failure, an existing npm version, failed tests/build, or failed publish. Check `npm view naxas-mcp version --prefer-online` after npm finishes processing.
+
+Do not put npm tokens in the batch file or GitHub. The script uses the credentials maintained by the npm CLI on your Windows account.
+
+## Automatic release from GitHub (optional)
+
+If GitHub Actions is available on the account, the workflow [`npm-publish.yml`](../.github/workflows/npm-publish.yml) publishes the package when a **non-prerelease GitHub Release** is published. Ordinary commits and pull requests do not publish. It uses npm Trusted Publishing (OIDC), so no long-lived `NPM_TOKEN` GitHub secret is needed. If Actions is blocked, use the Windows script above.
 
 ### One-time npm account setup
 
