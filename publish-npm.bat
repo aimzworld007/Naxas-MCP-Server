@@ -4,6 +4,7 @@ cd /d "%~dp0"
 
 echo Naxas MCP npm release
 echo =====================
+echo Script folder: %CD%
 
 where git >nul 2>nul
 if errorlevel 1 (
@@ -21,8 +22,20 @@ if errorlevel 1 (
   goto :failed
 )
 
+git rev-parse --is-inside-work-tree >nul 2>nul
+if errorlevel 1 (
+  echo ERROR: This file is outside a Git clone. Use the file in the root of
+  echo your Naxas-MCP-Server-release Git clone after pulling the repository.
+  goto :failed
+)
+
 set "BRANCH="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "BRANCH=%%B"
+if not defined BRANCH (
+  echo ERROR: Git has no active branch, or this is a detached checkout.
+  echo Run "git status" in the script folder and switch to main.
+  goto :failed
+)
 if not "%BRANCH%"=="main" (
   echo ERROR: Check out the main branch before publishing. Current: %BRANCH%
   goto :failed
