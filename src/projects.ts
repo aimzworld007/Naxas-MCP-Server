@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { env } from "./config.js";
+import { assertProjectAccess, type Principal } from "./security/users.js";
 
 const projectId = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/);
 const projectValue = z.object({
@@ -51,6 +52,11 @@ export function getProject(id: string): ProjectConfig {
   const project = projects.get(id);
   if (!project) throw new Error("Unknown or unauthorized project");
   return project;
+}
+
+export function getProjectForPrincipal(id: string, principal: Principal): ProjectConfig {
+  assertProjectAccess(principal, id);
+  return getProject(id);
 }
 
 export function listProjectIds(): string[] {
