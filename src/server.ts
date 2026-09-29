@@ -4,6 +4,7 @@ import { rateLimit } from "express-rate-limit";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { env, allowedHosts } from "./config.js";
 import { registerTools } from "./tools.js";
 import { runWithRequestContext } from "./context.js";
@@ -125,7 +126,7 @@ app.get("/admin/status", mcpLimiter, async (req, res) => {
   res.setHeader("cache-control", "no-store");
   res.json({
     ok: projects.every(project => project.database.ok),
-    version: "0.5.0",
+    version: "0.5.1",
     uptime: formatUptime(process.uptime()),
     mcpEndpoint: "/mcp",
     projects,
@@ -133,24 +134,72 @@ app.get("/admin/status", mcpLimiter, async (req, res) => {
   });
 });
 
-app.post("/mcp", mcpLimiter, async (req, res) => {
+const mcpSessions = new Map<string, {
+  transport: StreamableHTTPServerTransport;
+  server: McpServer;
+}>();
+
+async function handleMcpRequest(req: express.Request, res: express.Response) {
   const requestId = String(res.getHeader("x-request-id") || "");
 
   if (!isAuthorized(req)) {
     return res.status(401).json(errorBody("UNAUTHORIZED", "Unauthorized", requestId));
   }
 
-  const server = new McpServer({ name: "naxas-mcp-server", version: "0.5.0" });
+  const sessionId = req.header("mcp-session-id") || undefined;
+  const existing = sessionId ? mcpSessions.get(sessionId) : undefined;
+
+  if (existing) {
+    try {
+      await existing.transport.handleRequest(req, res, req.body);
+    } catch (error) {
+      console.error(JSON.stringify({
+        type: "mcp_http_error",
+        requestId,
+        sessionId,
+        message: error instanceof Error ? error.message : "Unknown error"
+      }));
+
+      if (!res.headersSent) {
+        res.status(500).json(errorBody("MCP_REQUEST_FAILED", "MCP request failed", requestId));
+      }
+    }
+    return;
+  }
+
+  if (sessionId) {
+    return res.status(404).json({
+      jsonrpc: "2.0",
+      error: { code: -32001, message: "Session not found" },
+      id: null
+    });
+  }
+
+  if (req.method !== "POST" || !isInitializeRequest(req.body)) {
+    return res.status(400).json({
+      jsonrpc: "2.0",
+      error: { code: -32000, message: "Bad Request: Session ID required" },
+      id: null
+    });
+  }
+
+  const server = new McpServer({ name: "naxas-mcp-server", version: "0.5.1" });
   registerTools(server);
 
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID()
+  let transport: StreamableHTTPServerTransport;
+  transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => randomUUID(),
+    onsessioninitialized: initializedSessionId => {
+      mcpSessions.set(initializedSessionId, { transport, server });
+    }
   });
 
-  res.on("close", () => {
-    void transport.close();
+  transport.onclose = () => {
+    if (transport.sessionId) {
+      mcpSessions.delete(transport.sessionId);
+    }
     void server.close();
-  });
+  };
 
   try {
     await server.connect(transport);
@@ -166,7 +215,11 @@ app.post("/mcp", mcpLimiter, async (req, res) => {
       res.status(500).json(errorBody("MCP_REQUEST_FAILED", "MCP request failed", requestId));
     }
   }
-});
+}
+
+app.post("/mcp", mcpLimiter, handleMcpRequest);
+app.get("/mcp", mcpLimiter, handleMcpRequest);
+app.delete("/mcp", mcpLimiter, handleMcpRequest);
 
 app.use((_req, res) => {
   const requestId = String(res.getHeader("x-request-id") || "");
