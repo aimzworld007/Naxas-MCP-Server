@@ -1,6 +1,6 @@
 {
   "name": "naxas-mcp",
-  "version": "0.5.1",
+  "version": "0.5.3",
   "description": "Secure self-hosted PostgreSQL MCP gateway with read-only defaults, controlled writes, audit logging, and Docker/Coolify support.",
   "type": "module",
   "license": "MIT",
@@ -46,7 +46,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts",
+    "test": "node --import tsx --test test/*.test.ts",
     "check": "npm run typecheck && npm test && npm run build && node dist/cli.js --help",
     "prepublishOnly": "npm run check"
   },
