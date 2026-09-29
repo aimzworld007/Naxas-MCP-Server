@@ -31,7 +31,9 @@ First, commit a new version to GitHub in `package.json`, `package-lock.json`, `s
 .\publish-npm.bat
 ```
 
-For a Desktop shortcut, copy [`launch-publish-npm.bat`](../launch-publish-npm.bat) to your Desktop. Double-clicking it runs the publisher from `%USERPROFILE%\\Naxas-MCP-Server-release`; keep the Git clone at that path.\n\nIf the script reports that login is needed, run `npm login --auth-type=web` in PowerShell, then start the script again. It stops on local changes, wrong branch/repository, pull failure, an existing npm version, failed tests/build, or failed publish. Check `npm view naxas-mcp version --prefer-online` after npm finishes processing.
+For a Desktop shortcut, copy [`launch-publish-npm.bat`](../launch-publish-npm.bat) to your Desktop. Double-clicking it runs the publisher from `%USERPROFILE%\Naxas-MCP-Server-release`; keep the Git clone at that path.
+
+If the script reports that login is needed, run `npm login --auth-type=web` in PowerShell, then start the script again. It stops on local changes, wrong branch/repository, pull failure, an existing npm version, failed tests/build, or failed publish. Check `npm view naxas-mcp version --prefer-online` after npm finishes processing.
 
 Do not put npm tokens in the batch file or GitHub. The script uses the credentials maintained by the npm CLI on your Windows account.
 
