@@ -11,13 +11,14 @@ Report security-sensitive findings privately to the repository owner through an 
 
 ## Deployment requirements
 
-- Use separate PostgreSQL roles for read and write access.
+- Use a dedicated PostgreSQL role with the minimum privileges needed for each database. Separate read and write roles are supported through `readUrl` and `writeUrl` when stronger separation is required.
 - Keep PostgreSQL private; do not expose port 5432 to the public internet.
 - Use TLS at the MCP endpoint.
-- Use a long random bearer token or replace bearer auth with a production OAuth setup.
-- Prefer omitting `writeUrl` unless write operations are genuinely required.
+- Use a long random owner token and separate per-user tokens managed in the gateway panel.
+- Leave each project's Write mode disabled until needed. A single `url` uses the same PostgreSQL role for read and write connections.
 - Never grant the writer role superuser, database-owner, role-management, or schema-owner privileges.
 - Review MCP client permissions so write tools require confirmation.
+- Persist `MCP_ACCESS_FILE` on a writable mounted volume; protect and back up the token hashes and grants in it.
 - Treat third-party MCP servers and prompts as untrusted input.
 
 ## Secrets
