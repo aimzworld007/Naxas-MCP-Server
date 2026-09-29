@@ -1,6 +1,6 @@
 # Naxas MCP Server
 
-Open-source, self-hostable PostgreSQL MCP gateway for ChatGPT-compatible and other MCP clients.
+Open-source, self-hostable PostgreSQL MCP gateway for VS Code Codex and other MCP clients.
 
 It is designed around one rule: **read by default; write only through a separately privileged database role and an approval-capable MCP client.**
 
@@ -121,7 +121,7 @@ Remote MCP endpoint:
 POST https://your-domain.example/mcp
 ```
 
-See [Localhost setup](docs/LOCALHOST.md), [Coolify deployment](docs/COOLIFY.md), [VS Code Codex setup](docs/VSCODE_CODEX.md), [ChatGPT connection](docs/CHATGPT.md), [Admin dashboard](docs/ADMIN_DASHBOARD.md), and the [Naxas live read-only rollout](docs/NAXAS_LIVE_ROLLOUT.md).
+See [Localhost setup](docs/LOCALHOST.md), [Coolify deployment](docs/COOLIFY.md), [VS Code Codex setup](docs/VSCODE_CODEX.md), [multi-user VS Code access](docs/MULTI_USER_VSCODE.md), [ChatGPT connection](docs/CHATGPT.md), [Admin dashboard](docs/ADMIN_DASHBOARD.md), and the [Naxas live read-only rollout](docs/NAXAS_LIVE_ROLLOUT.md).
 
 ## Development checks
 
