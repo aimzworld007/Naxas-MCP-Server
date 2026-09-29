@@ -161,13 +161,19 @@ function renderProject(p){
     +(p.database.ok?'Connected':'Unavailable')+' · '+esc(p.database.latencyMs)+'ms</span>'
     +'</div>'
     +'<div class="policy">'
-    +'<div class="policy-item"><span>Read access</span><strong>'+badge(p.readConfigured)+'</strong></div>'
+    +'<div class="policy-item"><span>Read access</span><strong>'+badge(p.readEnabled)+'</strong></div>'
     +'<div class="policy-item"><span>Write connection</span><strong>'+badge(p.writeConfigured,"Configured","Not configured")+'</strong></div>'
     +'<div class="policy-item"><span>Write execution</span><strong>'+badge(p.writeEnabled)+'</strong></div>'
     +'<div class="policy-item"><span>DELETE</span><strong>'+(p.allowDelete?'<span class="badge warn">Enabled</span>':'<span class="badge off">Blocked</span>')+'</strong></div>'
     +'<div class="policy-item"><span>Max write rows</span><strong>'+esc(p.maxWriteRows)+'</strong></div>'
     +'<div class="policy-item"><span>Mode</span><strong>'+(p.writeEnabled?'Read + controlled write':'Read only')+'</strong></div>'
-    +'</div></article>';
+    +'</div><div class="user-actions" data-policy="'+esc(p.id)+'">'
+    +'<label class="grant-row">Name <input type="text" data-field="name" maxlength="100" value="'+esc(p.name)+'" /></label>'
+    +'<label class="grant-row"><input type="checkbox" data-field="readEnabled" '+(p.readEnabled?'checked':'')+' /> Allow reads</label>'
+    +'<label class="grant-row"><input type="checkbox" data-field="writeEnabled" '+(p.writeEnabled?'checked':'')+' '+(!p.writeConfigured?'disabled':'')+' /> Allow controlled writes</label>'
+    +'<label class="grant-row"><input type="checkbox" data-field="allowDelete" '+(p.allowDelete?'checked':'')+' /> Allow DELETE</label>'
+    +'<label class="grant-row">Max write rows <input type="number" min="1" max="10000" data-field="maxWriteRows" value="'+esc(p.maxWriteRows)+'" /></label>'
+    +'<button class="button small" data-action="save-policy">Save policy</button></div></article>';
 }
 
 function renderActivity(a){
@@ -185,7 +191,7 @@ let projectOptions=[];
 function renderUsers(users){
   $("users").innerHTML=users.map(u=>'<div class="user-row" data-user="'+esc(u.id)+'"><strong>'+esc(u.id)+'</strong>'
     +projectOptions.map(p=>'<label class="grant-row"><input type="checkbox" data-project="'+esc(p.id)+'" '+(u.projects.includes(p.id)?'checked':'')+' /> '+esc(p.name||p.id)+' ('+esc(p.id)+') · Read</label>'
-      +'<label class="grant-row"><input type="checkbox" data-write="'+esc(p.id)+'" '+(u.writeProjects.includes(p.id)?'checked':'')+' '+(!p.writeConfigured||!p.writeEnabled?'disabled':'')+' /> Write '+(!p.writeConfigured||!p.writeEnabled?'(server disabled)':'')+'</label>').join('')
+      +'<label class="grant-row"><input type="checkbox" data-write="'+esc(p.id)+'" '+(u.writeProjects.includes(p.id)?'checked':'')+' '+(!p.writeConfigured?'disabled':'')+' /> Write '+(!p.writeEnabled?'(project policy off)':'')+'</label>').join('')
     +'<div class="user-actions"><button class="button small" data-action="save">Save grants</button><button class="button ghost small" data-action="rotate">Rotate token</button><button class="button ghost small" data-action="delete">Remove</button></div></div>').join('');
 }
 function showMessage(message,token){
@@ -208,6 +214,16 @@ $("users").addEventListener("click",e=>{
     const writeProjects=[...row.querySelectorAll("[data-write]:checked")].map(x=>x.dataset.write);
     change(path,"PUT",{projects,writeProjects});
   }else change(path+(action==="rotate"?"/rotate":""),action==="rotate"?"POST":"DELETE");
+});
+$("projects").addEventListener("click",e=>{
+  if(e.target.closest("[data-action]")?.dataset.action!=="save-policy")return;
+  const row=e.target.closest("[data-policy]"),id=row.dataset.policy;
+  const checked=field=>row.querySelector('[data-field="'+field+'"]')?.checked||false;
+  change("/admin/projects/"+encodeURIComponent(id)+"/policy","PUT",{
+    name:row.querySelector('[data-field="name"]').value.trim(),
+    readEnabled:checked("readEnabled"),writeEnabled:checked("writeEnabled"),
+    allowDelete:checked("allowDelete"),maxWriteRows:Number(row.querySelector('[data-field="maxWriteRows"]').value)
+  });
 });
 
 async function load(){
