@@ -68,6 +68,14 @@ test("MCP users cannot reuse sessions or query another user's project", async ()
     }
     assert.ok(ready, `Server did not start: ${errors}`);
 
+    const dashboard = await fetch(baseUrl + "/");
+    const html = await dashboard.text();
+    assert.match(html, /\/admin\/app\.js\?v=[a-f0-9]{12}/);
+    assert.equal(dashboard.headers.get("cache-control"), "no-store");
+    const script = await fetch(baseUrl + "/admin/app.js");
+    assert.equal(script.headers.get("cache-control"), "no-store");
+    assert.match(await script.text(), /modeOptions/);
+
     const initialized = await post(aliceToken, {
       jsonrpc: "2.0", id: 1, method: "initialize",
       params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1" } }

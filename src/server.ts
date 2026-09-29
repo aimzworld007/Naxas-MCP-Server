@@ -1,7 +1,7 @@
 import express from "express";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
@@ -68,15 +68,22 @@ const mcpLimiter = rateLimit({
   message: { error: { code: "RATE_LIMITED", message: "Too many requests" } }
 });
 
+const adminAssetVersion = createHash("sha256").update(adminJs).update(adminCss).digest("hex").slice(0, 12);
+
 app.get("/", (_req, res) => {
-  res.type("html").send(adminHtml);
+  res.setHeader("cache-control", "no-store");
+  res.type("html").send(adminHtml
+    .replace('href="/admin/app.css"', `href="/admin/app.css?v=${adminAssetVersion}"`)
+    .replace('src="/admin/app.js"', `src="/admin/app.js?v=${adminAssetVersion}"`));
 });
 
 app.get("/admin/app.css", (_req, res) => {
+  res.setHeader("cache-control", "no-store");
   res.type("css").send(adminCss);
 });
 
 app.get("/admin/app.js", (_req, res) => {
+  res.setHeader("cache-control", "no-store");
   res.type("application/javascript").send(adminJs);
 });
 
