@@ -121,7 +121,7 @@ Remote MCP endpoint:
 POST https://your-domain.example/mcp
 ```
 
-See [Localhost setup](docs/LOCALHOST.md), [Coolify deployment](docs/COOLIFY.md), [ChatGPT connection](docs/CHATGPT.md), [Admin dashboard](docs/ADMIN_DASHBOARD.md), and the [Naxas live read-only rollout](docs/NAXAS_LIVE_ROLLOUT.md).
+See [Localhost setup](docs/LOCALHOST.md), [Coolify deployment](docs/COOLIFY.md), [VS Code Codex setup](docs/VSCODE_CODEX.md), [ChatGPT connection](docs/CHATGPT.md), [Admin dashboard](docs/ADMIN_DASHBOARD.md), and the [Naxas live read-only rollout](docs/NAXAS_LIVE_ROLLOUT.md).
 
 ## Development checks
 
