@@ -17,7 +17,7 @@ interface ProjectPolicyTarget {
 
 const grantSchema = z.strictObject({
   tokenSha256: z.string().regex(/^[a-fA-F0-9]{64}$/),
-  projects: z.array(z.union([userIdSchema, z.literal("*")])).min(1),
+  projects: z.array(z.union([userIdSchema, z.literal("*")])),
   writeEnabled: z.boolean().optional(),
   writeProjects: z.array(userIdSchema).optional()
 });
