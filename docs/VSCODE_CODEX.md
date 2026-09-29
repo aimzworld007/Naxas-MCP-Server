@@ -10,6 +10,7 @@
 | Gateway health | [https://mcp.naxasit.com/health](https://mcp.naxasit.com/health) |
 | Gateway readiness | [https://mcp.naxasit.com/ready](https://mcp.naxasit.com/ready) |
 | VS Code Codex setup | [This guide](VSCODE_CODEX.md) |
+| Multi-user VS Code access | [Per-user token and project setup](MULTI_USER_VSCODE.md) |
 | npm CLI / local installation | [NPM CLI guide](NPM_CLI.md) |
 | Localhost setup | [Localhost guide](LOCALHOST.md) |
 | Coolify deployment | [Coolify guide](COOLIFY.md) |
