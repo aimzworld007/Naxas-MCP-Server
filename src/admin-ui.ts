@@ -109,7 +109,7 @@ export const adminHtml = `<!doctype html>
 export const adminCss = `
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f5f7fb}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#f8fafc 0,#eef2f7 100%);min-height:100vh}
-button,input{font:inherit}.shell{max-width:1180px;margin:0 auto;padding:32px 20px 56px}
+button,input,select{font:inherit}.shell{max-width:1180px;margin:0 auto;padding:32px 20px 56px}
 .topbar{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-bottom:24px}
 h1,h2,p{margin-top:0}h1{font-size:34px;letter-spacing:-.03em;margin-bottom:8px}h2{font-size:20px;margin-bottom:6px}
 .sub,.muted{color:#667085}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.18em;color:#475467;margin-bottom:8px}
@@ -118,7 +118,7 @@ h1,h2,p{margin-top:0}h1{font-size:34px;letter-spacing:-.03em;margin-bottom:8px}h
 .button:hover{opacity:.92}.button.ghost{background:white;color:#344054;border:1px solid #d0d5dd;box-shadow:none}.button.small{padding:9px 12px;font-size:13px}
 .panel{background:rgba(255,255,255,.92);border:1px solid #e4e7ec;border-radius:18px;padding:22px;box-shadow:0 8px 30px rgba(16,24,40,.05);margin-bottom:20px}
 .login-panel{display:flex;justify-content:space-between;gap:24px;align-items:center}.login-form{min-width:420px}
-input{width:100%;border:1px solid #d0d5dd;background:#fff;border-radius:12px;padding:11px 13px;outline:none}input:focus{border-color:#98a2b3;box-shadow:0 0 0 3px rgba(152,162,179,.15)}
+input,select{width:100%;border:1px solid #d0d5dd;background:#fff;border-radius:12px;padding:11px 13px;outline:none}input:focus,select:focus{border-color:#98a2b3;box-shadow:0 0 0 3px rgba(152,162,179,.15)}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}.stat{background:#fff;border:1px solid #e4e7ec;border-radius:16px;padding:18px;box-shadow:0 4px 18px rgba(16,24,40,.04)}
 .stat-label{display:block;color:#667085;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}.stat strong{display:block;font-size:24px;margin:9px 0 5px}.stat small{color:#667085}
 .section-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}.section-head h2{margin-bottom:0}
@@ -145,6 +145,10 @@ function badge(value,on="Enabled",off="Disabled"){
   return '<span class="badge '+(value?'on':'off')+'">'+(value?on:off)+'</span>';
 }
 function fmtTime(v){try{return new Date(v).toLocaleString()}catch{return "—"}}
+function modeOptions(current,writeAvailable=true){
+  return [['off','Disabled'],['read','Read only'],['write','Read + Write']].map(([value,label])=>
+    '<option value="'+value+'" '+(current===value?'selected':'')+' '+(value==='write'&&!writeAvailable?'disabled':'')+'>'+label+'</option>').join('');
+}
 
 async function api(path,method="GET",body){
   const res=await fetch(path,{method,headers:{Authorization:"Bearer "+state.token,...(body?{"Content-Type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
@@ -169,8 +173,7 @@ function renderProject(p){
     +'<div class="policy-item"><span>Mode</span><strong>'+(p.writeEnabled?'Read + controlled write':'Read only')+'</strong></div>'
     +'</div><div class="user-actions" data-policy="'+esc(p.id)+'">'
     +'<label class="grant-row">Name <input type="text" data-field="name" maxlength="100" value="'+esc(p.name)+'" /></label>'
-    +'<label class="grant-row"><input type="checkbox" data-field="readEnabled" '+(p.readEnabled?'checked':'')+' /> Allow reads</label>'
-    +'<label class="grant-row"><input type="checkbox" data-field="writeEnabled" '+(p.writeEnabled?'checked':'')+' '+(!p.writeConfigured?'disabled':'')+' /> Allow controlled writes</label>'
+    +'<label class="grant-row">Access mode <select data-field="mode">'+modeOptions(p.writeEnabled?'write':p.readEnabled?'read':'off',p.writeConfigured)+'</select></label>'
     +'<label class="grant-row"><input type="checkbox" data-field="allowDelete" '+(p.allowDelete?'checked':'')+' /> Allow DELETE</label>'
     +'<label class="grant-row">Max write rows <input type="number" min="1" max="10000" data-field="maxWriteRows" value="'+esc(p.maxWriteRows)+'" /></label>'
     +'<button class="button small" data-action="save-policy">Save policy</button></div></article>';
@@ -190,8 +193,8 @@ function renderActivity(a){
 let projectOptions=[];
 function renderUsers(users){
   $("users").innerHTML=users.map(u=>'<div class="user-row" data-user="'+esc(u.id)+'"><strong>'+esc(u.id)+'</strong>'
-    +projectOptions.map(p=>'<label class="grant-row"><input type="checkbox" data-project="'+esc(p.id)+'" '+(u.projects.includes(p.id)?'checked':'')+' /> '+esc(p.name||p.id)+' ('+esc(p.id)+') · Read</label>'
-      +'<label class="grant-row"><input type="checkbox" data-write="'+esc(p.id)+'" '+(u.writeProjects.includes(p.id)?'checked':'')+' '+(!p.writeConfigured?'disabled':'')+' /> Write '+(!p.writeEnabled?'(project policy off)':'')+'</label>').join('')
+    +projectOptions.map(p=>'<label class="grant-row">'+esc(p.name||p.id)+' ('+esc(p.id)+') <select data-grant="'+esc(p.id)+'">'
+      +modeOptions(u.writeProjects.includes(p.id)?'write':u.projects.includes(p.id)?'read':'off',p.writeConfigured)+'</select></label>').join('')
     +'<div class="user-actions"><button class="button small" data-action="save">Save grants</button><button class="button ghost small" data-action="rotate">Rotate token</button><button class="button ghost small" data-action="delete">Remove</button></div></div>').join('');
 }
 function showMessage(message,token){
@@ -210,8 +213,9 @@ $("users").addEventListener("click",e=>{
   const id=row.dataset.user,path="/admin/users/"+encodeURIComponent(id);
   if(action==="delete"&&!confirm("Remove user "+id+" and revoke the token?"))return;
   if(action==="save"){
-    const projects=[...row.querySelectorAll("[data-project]:checked")].map(x=>x.dataset.project);
-    const writeProjects=[...row.querySelectorAll("[data-write]:checked")].map(x=>x.dataset.write);
+    const grants=[...row.querySelectorAll("[data-grant]")];
+    const projects=grants.filter(x=>x.value!=="off").map(x=>x.dataset.grant);
+    const writeProjects=grants.filter(x=>x.value==="write").map(x=>x.dataset.grant);
     change(path,"PUT",{projects,writeProjects});
   }else change(path+(action==="rotate"?"/rotate":""),action==="rotate"?"POST":"DELETE");
 });
@@ -219,9 +223,10 @@ $("projects").addEventListener("click",e=>{
   if(e.target.closest("[data-action]")?.dataset.action!=="save-policy")return;
   const row=e.target.closest("[data-policy]"),id=row.dataset.policy;
   const checked=field=>row.querySelector('[data-field="'+field+'"]')?.checked||false;
+  const mode=row.querySelector('[data-field="mode"]').value;
   change("/admin/projects/"+encodeURIComponent(id)+"/policy","PUT",{
     name:row.querySelector('[data-field="name"]').value.trim(),
-    readEnabled:checked("readEnabled"),writeEnabled:checked("writeEnabled"),
+    readEnabled:mode!=="off",writeEnabled:mode==="write",
     allowDelete:checked("allowDelete"),maxWriteRows:Number(row.querySelector('[data-field="maxWriteRows"]').value)
   });
 });
