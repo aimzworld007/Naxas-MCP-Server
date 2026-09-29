@@ -1,5 +1,25 @@
 # VS Code Codex setup
 
+## All links in one place
+
+| Resource | Link |
+| --- | --- |
+| GitHub source and README | [Naxas MCP Server](https://github.com/aimzworld007/Naxas-MCP-Server) |
+| Published npm package | [naxas-mcp on npm](https://www.npmjs.com/package/naxas-mcp) |
+| Live MCP endpoint (for Codex) | [https://mcp.naxasit.com/mcp](https://mcp.naxasit.com/mcp) |
+| Gateway health | [https://mcp.naxasit.com/health](https://mcp.naxasit.com/health) |
+| Gateway readiness | [https://mcp.naxasit.com/ready](https://mcp.naxasit.com/ready) |
+| VS Code Codex setup | [This guide](VSCODE_CODEX.md) |
+| npm CLI / local installation | [NPM CLI guide](NPM_CLI.md) |
+| Localhost setup | [Localhost guide](LOCALHOST.md) |
+| Coolify deployment | [Coolify guide](COOLIFY.md) |
+| Live Naxas read-only rollout | [Rollout guide](NAXAS_LIVE_ROLLOUT.md) |
+| ChatGPT connection | [ChatGPT guide](CHATGPT.md) |
+| Admin dashboard | [Admin dashboard guide](ADMIN_DASHBOARD.md) |
+| Official Codex MCP reference | [OpenAI Codex MCP docs](https://developers.openai.com/codex/mcp) |
+
+The MCP endpoint expects an authenticated MCP client; opening it in a browser is not a connection test. The health and readiness URLs are service checks. To use the hosted gateway from VS Code, follow the steps below. To install or self-host the npm package, use the NPM CLI and deployment guides above.
+
 Connect the Codex IDE extension to the hosted Naxas MCP gateway using Streamable HTTP. The Naxas deployment uses:
 
 ```text
