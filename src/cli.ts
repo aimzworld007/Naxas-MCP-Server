@@ -11,7 +11,7 @@ import pg from "pg";
 import { createAuthenticator, tokenSha256 } from "./security/users.js";
 
 const { Pool } = pg;
-const VERSION = "0.6.0";
+const VERSION = "1.0.0";
 
 function token() {
   return randomBytes(32).toString("base64url");

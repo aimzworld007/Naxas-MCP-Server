@@ -131,7 +131,7 @@ app.get("/admin/status", mcpLimiter, async (req, res) => {
   res.setHeader("cache-control", "no-store");
   res.json({
     ok: projects.every(project => project.database.ok),
-    version: "0.6.0",
+    version: "1.0.0",
     uptime: formatUptime(process.uptime()),
     mcpEndpoint: "/mcp",
     projects,
@@ -246,7 +246,7 @@ async function handleMcpRequest(req: express.Request, res: express.Response) {
     });
   }
 
-  const server = new McpServer({ name: "naxas-mcp-server", version: "0.6.0" });
+  const server = new McpServer({ name: "naxas-mcp-server", version: "1.0.0" });
   registerTools(server, principal);
 
   let transport: StreamableHTTPServerTransport;

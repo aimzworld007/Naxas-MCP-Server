@@ -139,4 +139,4 @@ Licensed under the MIT License. You can fork, self-host, modify, and redistribut
 
 ## Current maturity
 
-Pre-1.0. Review the code and security model before using it with production databases. Production operators remain responsible for PostgreSQL privileges, secrets, network isolation, and MCP client permissions.
+Version 1.0 covers the documented multi-project, multi-user gateway and owner-managed access controls. Production operators remain responsible for PostgreSQL privileges, secrets, network isolation, backups, and MCP client permissions. See [version 1.0 release notes](docs/RELEASE_1_0.md).
