@@ -33,3 +33,22 @@ test("dashboard grants persist, limit writes by project, and revoke rotated toke
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("project policy is changed and restored from the persistent access file", () => {
+  const dir = mkdtempSync(join(tmpdir(), "naxas-policy-"));
+  const path = join(dir, "access.json");
+  const defaultPolicy = { readEnabled: true, writeEnabled: false, allowDelete: false, maxWriteRows: 100 };
+  let current = { ...defaultPolicy };
+  const target = { get: () => current, update: (_id: string, policy: typeof current) => { current = policy; } };
+  try {
+    const store = new AccessStore("o".repeat(43), ["01"], path, "{}", target);
+    assert.deepEqual(current, defaultPolicy);
+    store.setProjectPolicy("01", { readEnabled: true, writeEnabled: true, allowDelete: false, maxWriteRows: 25 });
+    assert.equal(current.writeEnabled, true);
+    current = { ...defaultPolicy };
+    new AccessStore("o".repeat(43), ["01"], path, "{}", target);
+    assert.deepEqual(current, { readEnabled: true, writeEnabled: true, allowDelete: false, maxWriteRows: 25 });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
