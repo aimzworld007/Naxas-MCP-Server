@@ -4,6 +4,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    volumes:
+      - mcp_access:/app/data
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
@@ -12,3 +14,5 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+volumes:
+  mcp_access:
