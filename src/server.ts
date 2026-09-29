@@ -8,7 +8,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { env, allowedHosts } from "./config.js";
 import { registerTools } from "./tools.js";
 import { runWithRequestContext } from "./context.js";
-import { listProjectIds, listProjectSummaries } from "./projects.js";
+import { getProjectPolicy, listProjectIds, listProjectSummaries, updateProjectPolicy } from "./projects.js";
 import { checkProjectReadHealth } from "./db.js";
 import { getRecentAuditEvents } from "./audit.js";
 import { adminCss, adminHtml, adminJs } from "./admin-ui.js";
@@ -25,7 +25,8 @@ function getBearerToken(req: express.Request) {
   return auth.startsWith("Bearer ") ? auth.slice(7) : "";
 }
 
-const access = new AccessStore(env.MCP_BEARER_TOKEN, listProjectIds(), env.MCP_ACCESS_FILE, env.MCP_USERS_JSON);
+const access = new AccessStore(env.MCP_BEARER_TOKEN, listProjectIds(), env.MCP_ACCESS_FILE,
+  env.MCP_USERS_JSON, { get: getProjectPolicy, update: updateProjectPolicy });
 const authenticate = (token: string) => access.authenticate(token);
 
 function formatUptime(seconds: number) {
@@ -143,6 +144,11 @@ const grantsSchema = z.strictObject({
   writeProjects: z.array(z.string()).default([])
 });
 const createUserSchema = grantsSchema.extend({ id: z.string() });
+const projectPolicySchema = z.strictObject({
+  name: z.string().min(1).max(100),
+  readEnabled: z.boolean(), writeEnabled: z.boolean(), allowDelete: z.boolean(),
+  maxWriteRows: z.number().int().positive().max(10000)
+});
 
 async function changeAccess(req: express.Request, res: express.Response,
   action: () => unknown) {
@@ -176,6 +182,9 @@ app.post("/admin/users/:id/rotate", mcpLimiter, (req, res) => changeAccess(req, 
 })));
 app.delete("/admin/users/:id", mcpLimiter, (req, res) => changeAccess(req, res, () => {
   access.remove(req.params.id as string);
+}));
+app.put("/admin/projects/:id/policy", mcpLimiter, (req, res) => changeAccess(req, res, () => {
+  access.setProjectPolicy(req.params.id as string, projectPolicySchema.parse(req.body));
 }));
 
 async function handleMcpRequest(req: express.Request, res: express.Response) {
