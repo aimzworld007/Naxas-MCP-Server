@@ -140,7 +140,7 @@ const mcpSessions = new Map<string, {
 }>();
 
 const grantsSchema = z.strictObject({
-  projects: z.array(z.string()).min(1),
+  projects: z.array(z.string()),
   writeProjects: z.array(z.string()).default([])
 });
 const createUserSchema = grantsSchema.extend({ id: z.string() });

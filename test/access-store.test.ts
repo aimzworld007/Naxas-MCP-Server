@@ -24,6 +24,8 @@ test("dashboard grants persist, limit writes by project, and revoke rotated toke
     assert.ok(restarted.authenticate(token));
     restarted.update("alice", ["01"], []);
     assert.deepEqual(restarted.list()[0].projects, ["01"]);
+    restarted.update("alice", [], []);
+    assert.throws(() => assertProjectAccess(restarted.authenticate(token)!, "01"), /unauthorized/);
     const replacement = restarted.rotate("alice");
     assert.equal(restarted.authenticate(token), undefined);
     assert.ok(restarted.authenticate(replacement));

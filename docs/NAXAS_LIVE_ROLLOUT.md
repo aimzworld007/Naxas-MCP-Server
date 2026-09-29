@@ -1,5 +1,7 @@
 # Naxas Live Read-Only Rollout
 
+> Historical instructions for the first Naxas database connection. For the current multi-project gateway and panel-managed access, see [project scope](PROJECT_SCOPE.md), [Coolify setup](COOLIFY.md), and [admin dashboard](ADMIN_DASHBOARD.md).
+
 This is the recommended first production rollout for `mcp.naxasit.com`.
 
 ## Goal

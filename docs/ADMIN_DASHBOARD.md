@@ -1,60 +1,23 @@
-# Admin Dashboard
+# Gateway owner dashboard
 
-The MCP gateway includes a lightweight operational dashboard at:
+Open `https://YOUR_DOMAIN/` (for the hosted instance, `https://mcp.naxasit.com/`) and sign in with the owner `MCP_BEARER_TOKEN`. The dashboard shell is public, but its status and management APIs require the owner bearer token. The browser stores that token in tab/session `sessionStorage`; do not use the owner token as a developer's VS Code token.
 
-`https://YOUR_DOMAIN/`
+## Project policy
 
-For Naxas:
+The `Projects` cards display project IDs and names, database read health, connection availability and effective policy. Select `Disabled`, `Read only`, or `Read + Write` from the project Access mode dropdown and press **Save policy**. The owner can also set the display name, Allow DELETE, and maximum affected rows. Changing a policy closes existing MCP sessions so clients reconnect under the new rules.
 
-`https://mcp.naxasit.com/`
+New single-URL projects start with Write disabled. Write requires Read enabled. With `PROJECTS_JSON={"01":{"url":"postgresql://..."}}`, the same PostgreSQL role is used by the read and write pools; the panel does not alter its actual database privileges. For separate roles, use `readUrl` and `writeUrl` instead. The gateway still blocks DDL, privilege changes, arbitrary SQL write classes, and multiple write statements.
 
-## Authentication
+Database URLs themselves remain in `PROJECTS_JSON` on the server. Adding or changing one requires an environment update and redeploy. URLs and passwords are never returned to the browser.
 
-The dashboard shell is public, but operational data is loaded only from the authenticated endpoint:
+## User access
 
-`GET /admin/status`
+Create each user in the panel and copy the generated token when it appears; the raw token is shown once. One user token can access several project IDs. For each project, select `Disabled`, `Read only`, or `Read + Write` from that user's dropdown and press **Save grants**. Rotate a token to revoke the old one; remove a user to revoke access. User tokens cannot access the owner dashboard.
 
-Enter the same `MCP_BEARER_TOKEN` used by the MCP client. The browser keeps it in `sessionStorage` for the current tab/session and sends it only as an Authorization bearer header to the same origin.
+The dashboard also shows gateway version, uptime, project health and recent MCP audit metadata. Recent activity is in memory and clears on restart.
 
-The server never sends the bearer token, database passwords, or PostgreSQL connection URLs to the dashboard.
+## Persistent storage
 
-## Dashboard information
+Set `MCP_ACCESS_FILE=/app/data/access.json` and mount a writable persistent volume at `/app/data`. The file contains token hashes, project policies, and user grants. Without the mount, saved settings may disappear when the container is replaced. Existing env-based `MCP_USERS_JSON` users are imported when the access file is first written; afterward the file takes precedence.
 
-The dashboard shows:
-
-- gateway online/attention state
-- server version and uptime
-- configured project count
-- per-project PostgreSQL read health and latency
-- whether read access is configured
-- whether a write connection exists
-- whether write execution is enabled
-- whether DELETE is allowed
-- maximum write-row guard
-- recent MCP audit metadata
-- a copy button for the MCP endpoint
-
-Recent activity is kept only in process memory and is cleared when the container restarts.
-
-## What the dashboard does not do
-
-The dashboard intentionally cannot:
-
-- reveal database URLs or passwords
-- reveal the MCP bearer token
-- execute SQL
-- enable or disable writes
-- change PostgreSQL privileges
-- edit Coolify environment variables
-- perform destructive database actions
-
-Write policy remains controlled by server-side environment configuration and PostgreSQL privileges.
-
-## Security notes
-
-- Always use HTTPS.
-- Keep `MCP_ALLOWED_HOSTS` restricted to the intended hostname.
-- Treat `MCP_BEARER_TOKEN` as a production secret.
-- Use the dashboard only from trusted devices.
-- Use **Lock dashboard** when finished.
-- The dashboard uses same-origin scripts/styles so Helmet CSP remains enabled.
+Always use HTTPS and keep the owner token private. The dashboard does not execute SQL or edit Coolify environment variables. See [project scope](PROJECT_SCOPE.md) and [Coolify deployment](COOLIFY.md).
