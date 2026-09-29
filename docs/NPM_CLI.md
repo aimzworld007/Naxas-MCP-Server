@@ -62,7 +62,9 @@ Only a package owner can link the npm package to the GitHub workflow. The workfl
 3. In GitHub, create a Release from the verified commit with tag `v<version>` (for example, `v0.5.5` for package version `0.5.5`) and **Publish release**.
 4. Check [GitHub Actions](https://github.com/aimzworld007/Naxas-MCP-Server/actions) for the **Publish to npm** run, then verify `npm view naxas-mcp version`.
 
-The workflow stops before publishing if the release tag differs from `package.json`. npm cannot publish the same package version twice. Version `0.5.4` was already published manually; the first automated release must use a newer version. Do not create a new `v0.5.4` release to test this workflow.
+The workflow stops before publishing if the release tag differs from `package.json`. npm cannot publish the same package version twice. Check the current published version with `npm view naxas-mcp version --prefer-online` before preparing a release.
+
+For version 1.0.0, merge the reviewed version bump into `main`, run the Windows script above from a clean clone, and verify `npm view naxas-mcp@1.0.0 version --prefer-online`. Use the GitHub Release workflow only if Trusted Publishing and GitHub Actions are available. Do not run both publishing routes for the same version.
 
 Manual `npm publish --access public` remains available to an authenticated package maintainer when needed.
 
