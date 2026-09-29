@@ -5,19 +5,21 @@ import { assertProjectAccess, type Principal } from "./security/users.js";
 const projectId = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/);
 const projectValue = z.object({
   name: z.string().min(1).max(100).optional(),
-  readUrl: z.string().min(1),
+  url: z.string().min(1).optional(),
+  readUrl: z.string().min(1).optional(),
   writeUrl: z.string().min(1).optional(),
   writeEnabled: z.boolean().default(false),
   allowDelete: z.boolean().default(false),
   maxWriteRows: z.number().int().positive().max(10000).optional()
-});
+}).refine(value => Boolean(value.url || value.readUrl), "A database URL is required");
 const registrySchema = z.record(projectId, projectValue);
 
 export interface ProjectConfig {
   id: string;
   name: string;
   readUrl: string;
-  writeUrl?: string;
+  writeUrl: string;
+  readEnabled: boolean;
   writeEnabled: boolean;
   allowDelete: boolean;
   maxWriteRows: number;
@@ -40,8 +42,9 @@ function loadRegistry(): Map<string, ProjectConfig> {
     {
       id,
       name: value.name ?? id,
-      readUrl: value.readUrl,
-      writeUrl: value.writeUrl,
+      readUrl: (value.readUrl ?? value.url)!,
+      writeUrl: value.writeUrl ?? value.url ?? "",
+      readEnabled: true,
       writeEnabled: value.writeEnabled,
       allowDelete: value.allowDelete,
       maxWriteRows: value.maxWriteRows ?? env.DEFAULT_MAX_WRITE_ROWS
@@ -59,7 +62,30 @@ export function getProject(id: string): ProjectConfig {
 
 export function getProjectForPrincipal(id: string, principal: Principal): ProjectConfig {
   assertProjectAccess(principal, id);
-  return getProject(id);
+  const project = getProject(id);
+  if (!project.readEnabled) throw new Error("Read operations are disabled for this project");
+  return project;
+}
+
+export interface ProjectPolicy {
+  name?: string;
+  readEnabled: boolean;
+  writeEnabled: boolean;
+  allowDelete: boolean;
+  maxWriteRows: number;
+}
+
+export function updateProjectPolicy(id: string, policy: ProjectPolicy) {
+  const project = getProject(id);
+  if (policy.writeEnabled && !policy.readEnabled) throw new Error("Read must be enabled before Write");
+  if (policy.writeEnabled && !project.writeUrl) throw new Error("Write connection is not configured");
+  if (policy.name !== undefined && (!policy.name.trim() || policy.name.length > 100)) throw new Error("Invalid project name");
+  Object.assign(project, policy);
+}
+
+export function getProjectPolicy(id: string): ProjectPolicy {
+  const { name, readEnabled, writeEnabled, allowDelete, maxWriteRows } = getProject(id);
+  return { name, readEnabled, writeEnabled, allowDelete, maxWriteRows };
 }
 
 export function listProjectIds(): string[] {
@@ -71,6 +97,7 @@ export interface ProjectSummary {
   id: string;
   name: string;
   readConfigured: boolean;
+  readEnabled: boolean;
   writeConfigured: boolean;
   writeEnabled: boolean;
   allowDelete: boolean;
@@ -83,6 +110,7 @@ export function listProjectSummaries(): ProjectSummary[] {
       id: project.id,
       name: project.name,
       readConfigured: Boolean(project.readUrl),
+      readEnabled: project.readEnabled,
       writeConfigured: Boolean(project.writeUrl),
       writeEnabled: project.writeEnabled,
       allowDelete: project.allowDelete,

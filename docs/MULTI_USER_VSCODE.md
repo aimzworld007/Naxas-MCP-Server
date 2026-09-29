@@ -2,19 +2,19 @@
 
 The hosted Naxas MCP gateway gives each developer one bearer token and project-specific read/write grants. The same token works across that user's allowed projects in the **Streamable HTTP** custom MCP connection in VS Code Codex. No ChatGPT plugin is required.
 
-The owner token `MCP_BEARER_TOKEN` retains all projects. Put database connections in `PROJECTS_JSON` on the gateway. A stable project ID such as `01`, `02`, or `naxas` selects the database in tool calls; an optional `name` is shown in the panel. Example:
+The owner token `MCP_BEARER_TOKEN` retains all projects. Put database URLs in `PROJECTS_JSON` on the gateway. A stable project ID such as `01`, `02`, or `naxas` selects the database in tool calls; an optional `name` is shown in the panel. Example:
 
 ```json
-{"01":{"name":"Naxas Inventory","readUrl":"postgresql://readonly:password@db:5432/naxas","writeUrl":"postgresql://writer:password@db:5432/naxas","writeEnabled":true},"02":{"name":"Other App","readUrl":"postgresql://readonly:password@db:5432/other"}}
+{"01":{"url":"postgresql://naxas_user:password@db:5432/naxas"},"02":{"url":"postgresql://other_user:password@db:5432/other"}}
 ```
 
-Keep URLs and passwords on the gateway only. A project needs `writeUrl` and `writeEnabled:true` before its users can be granted Write. The SQL tool still enforces its write policy and row limit.
+Keep URLs and passwords on the gateway only. New single-URL projects start with writes off. In the owner panel, set project Read/Write/DELETE switches and max write rows, then grant each user access to that project. Changes are stored in `MCP_ACCESS_FILE` and take effect without an env edit or redeploy. `url` is used for both read and write connections; the DB role must have the necessary privileges for writes to succeed. The MCP SQL tool still accepts only controlled INSERT, UPDATE, and DELETE operations. Existing `readUrl`/`writeUrl` entries continue to work.
 
 ## Manage users in the gateway panel
 
 Set `MCP_ACCESS_FILE=/app/data/access.json` and mount persistent storage at `/app/data` (included in `docker-compose.yml`; for Coolify attach a persistent volume). This file holds token hashes and grants, not raw tokens or database passwords. It must survive container replacement and be writable by the Node process. Back it up privately.
 
-Open the gateway home page and sign in with the **owner token**. Create a user; the panel shows their token **once**. Copy it securely. Each user starts with read access to the currently configured projects and no write grant. Check Read/Write per project and press **Save grants**. **Rotate token** revokes the old token, and **Remove** revokes the user. Changes take effect immediately; existing MCP sessions close and VS Code must reconnect. No env edit or redeploy is needed for permission changes. To add a database connection, update `PROJECTS_JSON` and redeploy, then assign access in the panel.
+Open the gateway home page and sign in with the **owner token**. For each project, set Allow reads / Allow controlled writes / Allow DELETE / max write rows and save policy. Create a user; the panel shows their token **once**. Copy it securely. Each user starts with read access to the currently configured projects and no write grant. Check Read/Write per project and press **Save grants**. **Rotate token** revokes the old token, and **Remove** revokes the user. Changes take effect immediately; existing MCP sessions close and VS Code must reconnect. No env edit or redeploy is needed for policy or permission changes. To add a database connection, update `PROJECTS_JSON` and redeploy, then assign access in the panel.
 
 If `MCP_USERS_JSON` already contains users, the first panel change imports them into the access file. Once the file exists, it takes precedence over `MCP_USERS_JSON`. Keep the owner token in the environment. Do not share it as a normal developer token.
 
